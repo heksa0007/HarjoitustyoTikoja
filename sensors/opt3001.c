@@ -73,18 +73,31 @@ double opt3001_get_data(I2C_Handle *i2c) {
 
 	double lux = -1.0; // return value of the function
     // JTKJ: Find out the correct buffer sizes (n) with this sensor?
-    // uint8_t txBuffer[ n ];
-    // uint8_t rxBuffer{ n ];
+    uint8_t txBuffer[1];
+    uint8_t rxBuffer[2];
 
 	// JTKJ: Fill in the i2cMessage data structure with correct values
     //       as shown in the lecture material
     I2C_Transaction i2cMessage;
+
+    // i2c-viestirakenne
+    i2cMessage.slaveAddress = Board_OPT3001_ADDR;
+    txBuffer[0] = OPT3001_REG_RESULT;      // Rekisterin osoite lähetyspuskuriin
+    i2cMessage.writeBuf = txBuffer; // Lähetyspuskurin asetus
+    i2cMessage.writeCount = 1;      // Lähetetään 1 tavu
+    i2cMessage.readBuf = rxBuffer;  // Vastaanottopuskurin asetus
+    i2cMessage.readCount = 2;       // Vastaanotetaan 2 tavua
 
 	if (opt3001_get_status(i2c) & OPT3001_DATA_READY) {
 
 		if (I2C_transfer(*i2c, &i2cMessage)) {
 
 	        // JTKJ: Here the conversion from register value to lux
+		    uint16_t result = (rxBuffer[0] << 8) | rxBuffer[1];
+
+		    uint16_t bitE = ((result & 0b1111000000000000) >> 12);
+		    uint16_t bitR = (result & 0b0000111111111111);
+		    lux = 0.01 * pow(2, bitE) * bitR;
 
 		} else {
 

@@ -99,8 +99,21 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
     // JTKJ: Teht�v� 2. Avaa i2c-v�yl� taskin k�ytt��n
     // JTKJ: Exercise 2. Open the i2c bus
 
+    // Alustetaan i2c-väylä
+    I2C_Params_init(&i2cParams);
+    i2cParams.bitRate = I2C_400kHz;
+
+    // Avataan I2C väylä
+    i2c = I2C_open(Board_I2C_TMP, &i2cParams);
+    if (i2c == NULL) {
+        System_abort("Error Initializing I2C\n");
+    }
+
     // JTKJ: Teht�v� 2. Alusta sensorin OPT3001 setup-funktiolla
     //       Laita enne funktiokutsua eteen 100ms viive (Task_sleep)
+    Task_sleep(100000 / Clock_tickPeriod);
+    opt3001_setup(&i2c);
+
     // JTKJ: Exercise 2. Setup the OPT3001 sensor for use
     //       Before calling the setup function, insertt 100ms delay with Task_sleep
 
@@ -108,6 +121,10 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
         // JTKJ: Teht�v� 2. Lue sensorilta dataa ja tulosta se Debug-ikkunaan merkkijonona
         // JTKJ: Exercise 2. Read sensor data and print it to the Debug window as string
+        double optData = opt3001_get_data(&i2c);
+        char optDataStr[5];
+        snprintf(optDataStr, 5, "%f", optData);
+        System_printf(optDataStr);
 
         // JTKJ: Teht�v� 3. Tallenna mittausarvo globaaliin muuttujaan
         //       Muista tilamuutos
@@ -137,8 +154,13 @@ Int main(void) {
     
     // JTKJ: Teht�v� 2. Ota i2c-v�yl� k�ytt��n ohjelmassa
     // JTKJ: Exercise 2. Initialize i2c bus
+
+    // Väylä mukaan ohjelmaan
+    Board_initI2C();
+
     // JTKJ: Teht�v� 4. Ota UART k�ytt��n ohjelmassa
     // JTKJ: Exercise 4. Initialize UART
+
 
     // JTKJ: Teht�v� 1. Ota painonappi ja ledi ohjelman k�ytt��n
     //       Muista rekister�id� keskeytyksen k�sittelij� painonapille

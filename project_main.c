@@ -79,6 +79,13 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         // JTKJ: Exercise 3. Print out sensor data as string to debug window if the state is correct
         //       Remember to modify state
 
+        if (programState == DATA_READY) {
+            char optDataStr[5];
+            snprintf(optDataStr, 5, "%f", ambientLight);
+            System_printf(optDataStr);
+            programState = WAITING;
+        }
+
         // JTKJ: Teht�v� 4. L�het� sama merkkijono UARTilla
         // JTKJ: Exercise 4. Send the same sensor data string with UART
 
@@ -87,7 +94,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         System_flush();
 
         // Once per second, you can modify this
-        Task_sleep(1000000 / Clock_tickPeriod);
+        Task_sleep(10000 / Clock_tickPeriod);
     }
 }
 
@@ -111,7 +118,7 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
     // JTKJ: Teht�v� 2. Alusta sensorin OPT3001 setup-funktiolla
     //       Laita enne funktiokutsua eteen 100ms viive (Task_sleep)
-    Task_sleep(100000 / Clock_tickPeriod);
+    Task_sleep(10000 / Clock_tickPeriod);
     opt3001_setup(&i2c);
 
     // JTKJ: Exercise 2. Setup the OPT3001 sensor for use
@@ -122,21 +129,24 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         // JTKJ: Teht�v� 2. Lue sensorilta dataa ja tulosta se Debug-ikkunaan merkkijonona
         // JTKJ: Exercise 2. Read sensor data and print it to the Debug window as string
         double optData = opt3001_get_data(&i2c);
-        char optDataStr[5];
+        /*char optDataStr[5];
         snprintf(optDataStr, 5, "%f", optData);
-        System_printf(optDataStr);
+        System_printf(optDataStr);*/
 
         // JTKJ: Teht�v� 3. Tallenna mittausarvo globaaliin muuttujaan
         //       Muista tilamuutos
         // JTKJ: Exercise 3. Save the sensor value into the global variable
         //       Remember to modify state
 
+        ambientLight = optData;
+        programState = DATA_READY;
+
         // Just for sanity check for exercise, you can comment this out
         System_printf("sensorTask\n");
         System_flush();
 
         // Once per second, you can modify this
-        Task_sleep(1000000 / Clock_tickPeriod);
+        Task_sleep(10000 / Clock_tickPeriod);
     }
 }
 

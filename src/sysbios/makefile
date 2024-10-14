@@ -1,26 +1,26 @@
 
-XOPTS = -I"/home/student/ti/xdctools_3_32_01_22_core/packages/" -Dxdc_target_types__=/home/student/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/ti/targets/arm/elf/std.h -Dxdc_target_name__=M3
+XOPTS = -I"/home/linuxlite/ti/xdctools_3_32_00_06_core/packages/" -Dxdc_target_types__=/home/linuxlite/ti/tirtos_cc13xx_cc26xx_2_21_01_08/products/bios_6_46_01_38/packages/ti/targets/arm/elf/std.h -Dxdc_target_name__=M3
 
-vpath % /home/student/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/ti/sysbios/
-vpath %.c /home/student/ti/xdctools_3_32_01_22_core/packages/
+vpath % /home/linuxlite/ti/tirtos_cc13xx_cc26xx_2_21_01_08/products/bios_6_46_01_38/packages/ti/sysbios/
+vpath %.c /home/linuxlite/ti/xdctools_3_32_00_06_core/packages/
 
 CCOPTS    = --endian=little -mv7M3 --abi=eabi -q -ms --opt_for_speed=0  --program_level_compile -o3 -g --optimize_with_debug  -Dti_sysbios_knl_Task_minimizeLatency__D=FALSE -Dti_sysbios_family_arm_cc26xx_Boot_driverlibVersion=2 -Dti_sysbios_knl_Clock_stopCheckNext__D=TRUE -Dti_sysbios_family_arm_m3_Hwi_enableException__D=TRUE -Dti_sysbios_family_arm_m3_Hwi_disablePriority__D=32U -Dti_sysbios_family_arm_m3_Hwi_numSparseInterrupts__D=0U
 
-XDC_ROOT  = /home/student/ti/xdctools_3_32_01_22_core/packages/
+XDC_ROOT  = /home/linuxlite/ti/xdctools_3_32_00_06_core/packages/
 
-BIOS_ROOT = /home/student/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/ti/sysbios/
+BIOS_ROOT = /home/linuxlite/ti/tirtos_cc13xx_cc26xx_2_21_01_08/products/bios_6_46_01_38/packages/ti/sysbios/
 
 BIOS_DEFS =  -Dti_sysbios_BIOS_swiEnabled__D=TRUE -Dti_sysbios_BIOS_taskEnabled__D=TRUE -Dti_sysbios_BIOS_clockEnabled__D=TRUE -Dti_sysbios_BIOS_runtimeCreatesEnabled__D=TRUE -Dti_sysbios_knl_Task_moduleStateCheckFlag__D=FALSE -Dti_sysbios_knl_Task_objectCheckFlag__D=FALSE -Dti_sysbios_hal_Hwi_DISABLE_ALL_HOOKS -Dti_sysbios_knl_Swi_DISABLE_ALL_HOOKS -Dti_sysbios_BIOS_smpEnabled__D=FALSE -Dti_sysbios_Build_useHwiMacros -Dti_sysbios_knl_Swi_numPriorities__D=6 -Dti_sysbios_knl_Task_deleteTerminatedTasks__D=FALSE -Dti_sysbios_knl_Task_numPriorities__D=4 -Dti_sysbios_knl_Task_checkStackFlag__D=FALSE -Dti_sysbios_knl_Task_initStackFlag__D=TRUE -Dti_sysbios_knl_Task_DISABLE_ALL_HOOKS -Dti_sysbios_knl_Clock_TICK_SOURCE=ti_sysbios_knl_Clock_TickSource_TIMER -Dti_sysbios_knl_Clock_TICK_MODE=ti_sysbios_knl_Clock_TickMode_DYNAMIC -Dti_sysbios_hal_Core_delegate_getId=ti_sysbios_hal_CoreNull_getId__E -Dti_sysbios_hal_Core_delegate_interruptCore=ti_sysbios_hal_CoreNull_interruptCore__E -Dti_sysbios_hal_Core_delegate_lock=ti_sysbios_hal_CoreNull_lock__E -Dti_sysbios_hal_Core_delegate_unlock=ti_sysbios_hal_CoreNull_unlock__E -Dti_sysbios_hal_Core_numCores__D=1 -Dti_sysbios_hal_CoreNull_numCores__D=1 -Dti_sysbios_utils_Load_taskEnabled__D=TRUE -Dti_sysbios_utils_Load_swiEnabled__D=FALSE -Dti_sysbios_utils_Load_hwiEnabled__D=FALSE -Dti_sysbios_family_arm_m3_Hwi_dispatcherSwiSupport__D=TRUE -Dti_sysbios_family_arm_m3_Hwi_dispatcherTaskSupport__D=TRUE -Dti_sysbios_family_arm_m3_Hwi_dispatcherAutoNestingSupport__D=TRUE -Dti_sysbios_family_arm_m3_Hwi_dispatcherIrpTrackingSupport__D=TRUE -Dti_sysbios_knl_Semaphore_supportsEvents__D=FALSE -Dti_sysbios_knl_Semaphore_supportsPriority__D=FALSE -Dxdc_runtime_Assert_DISABLE_ALL -Dxdc_runtime_Log_DISABLE_ALL
 
-BIOS_INC  = -I"/home/student/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/"
+BIOS_INC  = -I"/home/linuxlite/ti/tirtos_cc13xx_cc26xx_2_21_01_08/products/bios_6_46_01_38/packages/"
 
-TARGET_INC = -I"/home/student/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/"
+TARGET_INC = -I"/home/linuxlite/ti/tirtos_cc13xx_cc26xx_2_21_01_08/products/bios_6_46_01_38/packages/"
 
-INCS = $(BIOS_INC) $(TARGET_INC)  --include_path="/home/student/workspace_v10/empty_CC2650STK_TI" --include_path="/home/student/workspace_v10/empty_CC2650STK_TI" --include_path="/home/student/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/cc26xxware_2_24_03_17272" --include_path="/home/student/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/include"  -I/home/student/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/ 
+INCS = $(BIOS_INC) $(TARGET_INC)  --include_path="/home/linuxlite/workspace_v10/empty_CC2650STK_TI" --include_path="/home/linuxlite/workspace_v10/empty_CC2650STK_TI" --include_path="/home/linuxlite/ti/tirtos_cc13xx_cc26xx_2_21_01_08/products/cc26xxware_2_24_03_17272" --include_path="/home/linuxlite/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/include"  -I/home/linuxlite/ti/tirtos_cc13xx_cc26xx_2_21_01_08/products/bios_6_46_01_38/packages/ 
 
-CC = /home/student/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armcl -c $(CCOPTS) -I /home/student/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/include
-ASM = /home/student/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armcl -c $(CCOPTS) -I /home/student/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/include
-AR = /home/student/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armar rq
+CC = /home/linuxlite/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armcl -c $(CCOPTS) -I /home/linuxlite/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/include
+ASM = /home/linuxlite/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armcl -c $(CCOPTS) -I /home/linuxlite/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/include
+AR = /home/linuxlite/ti/ccs1040/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armar rq
 
 DEL = rm -f
 CP = cp -f
@@ -101,7 +101,7 @@ rom_sysbios.obj: BIOS.c knl/Clock.c knl/Idle.c knl/Intrinsics.c knl/Event.c knl/
 rom_sysbios.aem3: rom_sysbios.obj m3_Hwi_asm.obj m3_Hwi_asm_switch.obj m3_IntrinsicsSupport_asm.obj m3_TaskSupport_asm.obj
 	@-$(call RM, $@)
 	@echo arem3 $^ ...
-	@$(AR) $@ $^ /home/student/ti/tirtos_cc13xx_cc26xx_2_21_00_06/products/bios_6_46_01_37/packages/ti/sysbios/rom/cortexm/cc26xx/golden/CC26xx/rom_sysbios_config.obj
+	@$(AR) $@ $^ /home/linuxlite/ti/tirtos_cc13xx_cc26xx_2_21_01_08/products/bios_6_46_01_38/packages/ti/sysbios/rom/cortexm/cc26xx/golden/CC26xx/rom_sysbios_config.obj
 
 clean:
 	@$(DEL) ../makefile.libs

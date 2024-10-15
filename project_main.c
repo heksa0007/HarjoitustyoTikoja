@@ -1,5 +1,6 @@
 /* C Standard library */
 #include <stdio.h>
+#include <string.h>
 
 /* XDCtools files */
 #include <xdc/std.h>
@@ -72,6 +73,25 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
     // JTKJ: Teht�v� 4. Lis�� UARTin alustus: 9600,8n1
     // JTKJ: Exercise 4. Setup here UART connection as 9600,8n1
 
+    UART_Handle uart;
+    UART_Params uartParams;
+    char echoMsg[5];
+
+    UART_Params_init(&uartParams);
+    uartParams.writeDataMode = UART_DATA_TEXT;
+    uartParams.readDataMode = UART_DATA_TEXT;
+    uartParams.readEcho = UART_ECHO_OFF;
+    uartParams.readMode = UART_MODE_BLOCKING;
+    uartParams.baudRate = 9600; // nopeus 9600baud
+    uartParams.dataLength = UART_LEN_8; // 8
+    uartParams.parityType = UART_PAR_NONE; // n
+    uartParams.stopBits = UART_STOP_ONE; // 1
+
+    uart = UART_open(Board_UART0, &uartParams);
+    if (uart == NULL) {
+        System_abort("Error opening the UART");
+    }
+
     while (1) {
 
         // JTKJ: Teht�v� 3. Kun tila on oikea, tulosta sensoridata merkkijonossa debug-ikkunaan
@@ -81,8 +101,13 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
         if (programState == DATA_READY) {
             char optDataStr[5];
-            snprintf(optDataStr, 5, "%f", ambientLight);
+            snprintf(optDataStr, 5, "%f\n", ambientLight);
             System_printf(optDataStr);
+
+            // UART write:
+            sprintf(echoMsg, "%f\n\r", ambientLight);
+            UART_write(uart, echoMsg, strlen(echoMsg));
+
             programState = WAITING;
         }
 
@@ -94,7 +119,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         System_flush();
 
         // Once per second, you can modify this
-        Task_sleep(10000 / Clock_tickPeriod);
+        Task_sleep(1000000 / Clock_tickPeriod);
     }
 }
 
@@ -146,7 +171,7 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         System_flush();
 
         // Once per second, you can modify this
-        Task_sleep(10000 / Clock_tickPeriod);
+        Task_sleep(1000000 / Clock_tickPeriod);
     }
 }
 
@@ -170,6 +195,7 @@ Int main(void) {
 
     // JTKJ: Teht�v� 4. Ota UART k�ytt��n ohjelmassa
     // JTKJ: Exercise 4. Initialize UART
+    Board_initUART();
 
 
     // JTKJ: Teht�v� 1. Ota painonappi ja ledi ohjelman k�ytt��n

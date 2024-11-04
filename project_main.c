@@ -17,6 +17,7 @@
 #include <ti/drivers/power/PowerCC26XX.h>
 #include <ti/drivers/UART.h>
 
+
 /* Board Header files */
 #include "Board.h"
 #include "sensors/opt3001.h"
@@ -186,7 +187,7 @@ Int main(void) {
     // Initialize board
     Board_initGeneral();
 
-    
+
     // JTKJ: Teht�v� 2. Ota i2c-v�yl� k�ytt��n ohjelmassa
     // JTKJ: Exercise 2. Initialize i2c bus
 

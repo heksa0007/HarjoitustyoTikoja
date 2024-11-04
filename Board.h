@@ -37,6 +37,9 @@
 extern "C" {
 #endif
 
+// Tämä rivi lisätään itse tähän Displayta varten
+//#define BOARD_DISPLAY_EXCLUDE_UART
+
 #include <ti/drivers/Power.h>
 
 #include "CC2650STK.h"
@@ -82,6 +85,8 @@ extern "C" {
 /* Interface #1 */
 #define     Board_MPU9250_ADDR      (0x68)
 #define     Board_MPU9250_MAG_ADDR  (0x0C)
+
+
 
 #ifdef __cplusplus
 }

@@ -27,50 +27,87 @@
 Char sensorTaskStack[STACKSIZE];
 Char uartTaskStack[STACKSIZE];
 
-//RTOSmuuttujat käyttöön
+
+
+
+//// RTOS-muuttujat käyttöön:
+
+// Napit
 static PIN_Handle button0Handle;
 static PIN_State button0State;
 static PIN_Handle button1Handle;
 static PIN_State button1State;
+// Ledit
 static PIN_Handle led0Handle;
 static PIN_State led0State;
 static PIN_Handle led1Handle;
 static PIN_State led1State;
+// MPU power pin global variables (kiihtyvyysanturi)
+static PIN_Handle hMpuPin;
+static PIN_State  MpuPinState;
 
 
-//Alustetaan pinniconfiguraatiot:
 
-// Painonappi 0
+//// Alustetaan pinniconfiguraatiot:
+
+// Painonappi 0 (toiminto)
 PIN_Config button0Config[] = {
    Board_BUTTON0  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
    PIN_TERMINATE
 };
 
 // Painonappi 1 (on-off)
-PIN_Config button2Config[] = {
+PIN_Config button1Config[] = {
    Board_BUTTON1  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
    PIN_TERMINATE
 };
 
-// Ledi 0
+// Ledi 0 (vihreä)
 PIN_Config led0Config[] = {
    Board_LED0 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL | PIN_DRVSTR_MAX,
    PIN_TERMINATE
 };
 
-// Ledi 1
+// Ledi 1 (punainen)
 PIN_Config led1Config[] = {
    Board_LED1 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL | PIN_DRVSTR_MAX,
    PIN_TERMINATE
 };
 
+// MPU power pin (kiihtyvyysanturi)
+static PIN_Config MpuPinConfig[] = {
+    Board_MPU_POWER  | PIN_GPIO_OUTPUT_EN | PIN_GPIO_HIGH | PIN_PUSHPULL | PIN_DRVSTR_MAX,
+    PIN_TERMINATE
+};
 
-// JTKJ: Tehtävä 3. Tilakoneen esittely
-enum state { WAITING=1, DATA_READY };
+
+
+// MPU uses its own I2C interface
+static const I2CCC26XX_I2CPinCfg i2cMPUCfg = {
+    .pinSDA = Board_I2C0_SDA1,
+    .pinSCL = Board_I2C0_SCL1
+};
+
+
+
+// Tilakoneen esittely
+enum state { WAITING=1, DATA_READY,
+             READ_COMMANDS, READ_CHARACTERS,
+             SEND_MESSAGE, MESSAGE_SENT,
+             RECEIVING_MESSAGE, MESSAGE_RECEIVED, SHOW_MESSAGE};
 enum state programState = WAITING;
 
-// JTKJ: Tehtävä 3. Valoisuuden globaali muuttuja
+// Alempi tilakone, johon tallennetaan viestin lähettämiseen liittyvä tila.
+// Siksi, että se voidaan palauttaa viestin vastaanottamisen jälkeen
+// ja voidaan jatkaa viestin kirjoittamista välittömästi uudelleen
+enum state programState2 = WAITING;
+
+
+/*
+// Valoisuuden globaali muuttuja
 double ambientLight = -1000.0;
+*/
+
 
 // Painonappien RTOS-muuttujat ja alustus
 
@@ -114,14 +151,18 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         System_abort("Error opening the UART");
     }
 
+
+
     while (1) {
 
-        // JTKJ: Tehtävä 3. Kun tila on oikea, tulosta sensoridata merkkijonossa debug-ikkunaan
-        //       Muista tilamuutos
-        // JTKJ: Exercise 3. Print out sensor data as string to debug window if the state is correct
-        //       Remember to modify state
+        //// TILAKONE
 
         if (programState == DATA_READY) {
+
+            // Kun saadaan sensoridataa: mitä tehdään? Tarvitaanko tätä ollenkaan?
+
+            // Valosensori:
+            /*
             char optDataStr[5];
             snprintf(optDataStr, 5, "%f\n", ambientLight);
             System_printf(optDataStr);
@@ -129,17 +170,90 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             // UART write:
             sprintf(echoMsg, "%f\n\r", ambientLight);
             UART_write(uart, echoMsg, strlen(echoMsg));
+            */
 
             programState = WAITING;
         }
 
-        // JTKJ: Tehtävä 4. Lähetä sama merkkijono UARTilla
+
+        if (programState == RECEIVING_MESSAGE) {
+            // TODO:
+            // Viestin vastaanottaminen
+
+            // Viesti vastaanotettu
+            programState = MESSAGE_RECEIVED;
+        }
+
+
+        if (programState == MESSAGE_RECEIVED) {
+            // TODO:
+
+            // Jos oikeassa asennossa ja viestiä ei kirjoiteta
+            // if ((asdf) && (programState2 == WAITING))
+                // Näytetään viesti
+                programState = SHOW_MESSAGE;
+        }
+
+
+        if (programState == SHOW_MESSAGE) {
+            // TODO:
+            // Viestin morsetus
+
+            // kun valmis:
+                programState = WAITING;
+        }
+
+
+        if (programState == READ_COMMANDS) {
+            // TODO:
+            // Lue komentoja
+
+            // kun valmis:
+                    {
+                programState = SEND_MESSAGE;
+                programState2 = SEND_MESSAGE;
+            }
+        }
+
+
+        if (programState == READ_CHARACTERS) {
+            // TODO:
+            // Lue merkkejä
+
+            // kun valmis:
+                    {
+                programState = SEND_MESSAGE;
+                programState2 = SEND_MESSAGE;
+            }
+        }
+
+
+        if (programState == SEND_MESSAGE) {
+            // TODO:
+            // Lähetä viestit
+
+            // Led0 (virheä) päälle
+            programState = MESSAGE_SENT;
+            programState2 = MESSAGE_SENT;
+        }
+
+
+        if (programState == MESSAGE_SENT) {
+            // TODO:
+            // Ajasta 2s
+
+            // Siirry takaisin odotustilaan
+            programState = WAITING;
+            programState2 = WAITING;
+        }
+
+
 
         // Just for sanity check for exercise, you can comment this out
         System_printf("uartTask\n");
         System_flush();
 
-        // Once per second, you can modify this
+        // Ohjelmataajuus:
         Task_sleep(1000000 / Clock_tickPeriod);
     }
 }
@@ -148,8 +262,6 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
     I2C_Handle      i2c;
     I2C_Params      i2cParams;
-
-    // JTKJ: Tehtävä 2. Avaa i2c-väylä taskin kyttöön
 
     // Alustetaan i2c-väylä
     I2C_Params_init(&i2cParams);
@@ -161,20 +273,21 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         System_abort("Error Initializing I2C\n");
     }
 
-    // JTKJ: Tehtävä 2. Alusta sensorin OPT3001 setup-funktiolla
-    //       Laita ennen funktiokutsua eteen 100ms viive (Task_sleep)
+    /*
+    // Alusta sensori OPT3001 setup-funktiolla
+    // Laita ennen funktiokutsua eteen 100ms viive (Task_sleep)
     Task_sleep(10000 / Clock_tickPeriod);
     opt3001_setup(&i2c);
 
     while (1) {
 
-        // JTKJ: Tehtävä 2. Lue sensorilta dataa ja tulosta se Debug-ikkunaan merkkijonona
+        // Lue sensorilta dataa ja tulosta se Debug-ikkunaan merkkijonona
 
         double optData = opt3001_get_data(&i2c);
         /*char optDataStr[5];
         snprintf(optDataStr, 5, "%f", optData);
         System_printf(optDataStr);*/
-
+/*
         // JTKJ: Tehtävä 3. Tallenna mittausarvo globaaliin muuttujaan
         //       Muista tilamuutos
 
@@ -189,6 +302,8 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         Task_sleep(1000000 / Clock_tickPeriod);
     }
 }
+*/
+
 
 Int main(void) {
 
@@ -209,27 +324,25 @@ Int main(void) {
     Board_initUART();
 
 
-    // Ledi käyttöön ohjelmassa
+    // Ledi 0 (virheä) käyttöön ohjelmassa
     led0Handle = PIN_open( &led0State, led0Config );
     if(!led0Handle) {
        System_abort("Error initializing LED pin\n");
     }
+    // Ledi 1 (punainen) käyttöön
     led1Handle = PIN_open( &led1State, led1Config );
     if(!led1Handle) {
        System_abort("Error initializing LED pin\n");
     }
 
-    // TODO: Toinen ledi käyttöön ohjelmassa
-    // Toinen ledi käyttöön
 
-
-    // Painonappi 0 käyttöön ohjelmassa
+    // Painonappi 0 (toiminto) käyttöön ohjelmassa
     button0Handle = PIN_open(&button0State, button0Config);
     if(!button0Handle) {
        System_abort("Error initializing button0 pin\n");
     }
 
-    // Painonappi 1 käyttöön ohjelmassa
+    // Painonappi 1 (on-off) käyttöön ohjelmassa
     button1Handle = PIN_open(&button1State, button1Config);
     if(!button1Handle) {
        System_abort("Error initializing button1 pin\n");

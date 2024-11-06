@@ -28,51 +28,72 @@ Char sensorTaskStack[STACKSIZE];
 Char uartTaskStack[STACKSIZE];
 
 //RTOSmuuttujat käyttöön
-static PIN_Handle buttonHandle;
-static PIN_State buttonState;
-static PIN_Handle ledHandle;
-static PIN_State ledState;
+static PIN_Handle button0Handle;
+static PIN_State button0State;
+static PIN_Handle button1Handle;
+static PIN_State button1State;
+static PIN_Handle led0Handle;
+static PIN_State led0State;
+static PIN_Handle led1Handle;
+static PIN_State led1State;
 
-//Alustetaan pinni configuraatiot:
-PIN_Config buttonConfig[] = {
+
+//Alustetaan pinniconfiguraatiot:
+
+// Painonappi 0
+PIN_Config button0Config[] = {
    Board_BUTTON0  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
    PIN_TERMINATE
 };
 
-PIN_Config ledConfig[] = {
+// Painonappi 1 (on-off)
+PIN_Config button2Config[] = {
+   Board_BUTTON1  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
+   PIN_TERMINATE
+};
+
+// Ledi 0
+PIN_Config led0Config[] = {
    Board_LED0 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL | PIN_DRVSTR_MAX,
    PIN_TERMINATE
 };
 
+// Ledi 1
+PIN_Config led1Config[] = {
+   Board_LED1 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL | PIN_DRVSTR_MAX,
+   PIN_TERMINATE
+};
 
 
-// JTKJ: Teht�v� 3. Tilakoneen esittely
-// JTKJ: Exercise 3. Definition of the state machine
+// JTKJ: Tehtävä 3. Tilakoneen esittely
 enum state { WAITING=1, DATA_READY };
 enum state programState = WAITING;
 
-// JTKJ: Teht�v� 3. Valoisuuden globaali muuttuja
-// JTKJ: Exercise 3. Global variable for ambient light
+// JTKJ: Tehtävä 3. Valoisuuden globaali muuttuja
 double ambientLight = -1000.0;
 
-// JTKJ: Teht�v� 1. Lis�� painonappien RTOS-muuttujat ja alustus
-// JTKJ: Exercise 1. Add pins RTOS-variables and configuration here
+// Painonappien RTOS-muuttujat ja alustus
 
-void buttonFxn(PIN_Handle handle, PIN_Id pinId) {
-    System_printf("Button pressed");
-    // JTKJ: Teht�v� 1. Vilkuta jompaa kumpaa ledi�
-    // JTKJ: Exercise 1. Blink either led of the device
+void button0Fxn(PIN_Handle handle, PIN_Id pinId) {
+    System_printf("Button 0 pressed");
     // Vaihdetaan led-pinnin tilaa negaatiolla
     uint_t pinValue = PIN_getOutputValue( Board_LED0 );
     pinValue = !pinValue;
-    PIN_setOutputValue( ledHandle, Board_LED0, pinValue );
+    PIN_setOutputValue( led0Handle, Board_LED0, pinValue );
+}
+
+void button1Fxn(PIN_Handle handle, PIN_Id pinId) {
+    System_printf("Button 1 pressed");
+    // Vaihdetaan led-pinnin tilaa negaatiolla
+    uint_t pinValue = PIN_getOutputValue( Board_LED1 );
+    pinValue = !pinValue;
+    PIN_setOutputValue( led1Handle, Board_LED1, pinValue );
 }
 
 /* Task Functions */
 Void uartTaskFxn(UArg arg0, UArg arg1) {
 
-    // JTKJ: Teht�v� 4. Lis�� UARTin alustus: 9600,8n1
-    // JTKJ: Exercise 4. Setup here UART connection as 9600,8n1
+    // JTKJ: Tehtävä 4. Lisää UARTin alustus: 9600,8n1
 
     UART_Handle uart;
     UART_Params uartParams;
@@ -95,7 +116,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
     while (1) {
 
-        // JTKJ: Teht�v� 3. Kun tila on oikea, tulosta sensoridata merkkijonossa debug-ikkunaan
+        // JTKJ: Tehtävä 3. Kun tila on oikea, tulosta sensoridata merkkijonossa debug-ikkunaan
         //       Muista tilamuutos
         // JTKJ: Exercise 3. Print out sensor data as string to debug window if the state is correct
         //       Remember to modify state
@@ -112,8 +133,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             programState = WAITING;
         }
 
-        // JTKJ: Teht�v� 4. L�het� sama merkkijono UARTilla
-        // JTKJ: Exercise 4. Send the same sensor data string with UART
+        // JTKJ: Tehtävä 4. Lähetä sama merkkijono UARTilla
 
         // Just for sanity check for exercise, you can comment this out
         System_printf("uartTask\n");
@@ -129,8 +149,7 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
     I2C_Handle      i2c;
     I2C_Params      i2cParams;
 
-    // JTKJ: Teht�v� 2. Avaa i2c-v�yl� taskin k�ytt��n
-    // JTKJ: Exercise 2. Open the i2c bus
+    // JTKJ: Tehtävä 2. Avaa i2c-väylä taskin kyttöön
 
     // Alustetaan i2c-väylä
     I2C_Params_init(&i2cParams);
@@ -142,27 +161,22 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         System_abort("Error Initializing I2C\n");
     }
 
-    // JTKJ: Teht�v� 2. Alusta sensorin OPT3001 setup-funktiolla
-    //       Laita enne funktiokutsua eteen 100ms viive (Task_sleep)
+    // JTKJ: Tehtävä 2. Alusta sensorin OPT3001 setup-funktiolla
+    //       Laita ennen funktiokutsua eteen 100ms viive (Task_sleep)
     Task_sleep(10000 / Clock_tickPeriod);
     opt3001_setup(&i2c);
 
-    // JTKJ: Exercise 2. Setup the OPT3001 sensor for use
-    //       Before calling the setup function, insertt 100ms delay with Task_sleep
-
     while (1) {
 
-        // JTKJ: Teht�v� 2. Lue sensorilta dataa ja tulosta se Debug-ikkunaan merkkijonona
-        // JTKJ: Exercise 2. Read sensor data and print it to the Debug window as string
+        // JTKJ: Tehtävä 2. Lue sensorilta dataa ja tulosta se Debug-ikkunaan merkkijonona
+
         double optData = opt3001_get_data(&i2c);
         /*char optDataStr[5];
         snprintf(optDataStr, 5, "%f", optData);
         System_printf(optDataStr);*/
 
-        // JTKJ: Teht�v� 3. Tallenna mittausarvo globaaliin muuttujaan
+        // JTKJ: Tehtävä 3. Tallenna mittausarvo globaaliin muuttujaan
         //       Muista tilamuutos
-        // JTKJ: Exercise 3. Save the sensor value into the global variable
-        //       Remember to modify state
 
         ambientLight = optData;
         programState = DATA_READY;
@@ -188,36 +202,46 @@ Int main(void) {
     Board_initGeneral();
 
 
-    // JTKJ: Teht�v� 2. Ota i2c-v�yl� k�ytt��n ohjelmassa
-    // JTKJ: Exercise 2. Initialize i2c bus
-
     // Väylä mukaan ohjelmaan
     Board_initI2C();
 
-    // JTKJ: Teht�v� 4. Ota UART k�ytt��n ohjelmassa
-    // JTKJ: Exercise 4. Initialize UART
+    // UART käyttöön ohjelmassa
     Board_initUART();
 
 
-    // JTKJ: Teht�v� 1. Ota painonappi ja ledi ohjelman k�ytt��n
-    //       Muista rekister�id� keskeytyksen k�sittelij� painonapille
-    // JTKJ: Exercise 1. Open the button and led pins
-    //       Remember to register the above interrupt handler for button
-
     // Ledi käyttöön ohjelmassa
-    ledHandle = PIN_open( &ledState, ledConfig );
-    if(!ledHandle) {
+    led0Handle = PIN_open( &led0State, led0Config );
+    if(!led0Handle) {
+       System_abort("Error initializing LED pin\n");
+    }
+    led1Handle = PIN_open( &led1State, led1Config );
+    if(!led1Handle) {
        System_abort("Error initializing LED pin\n");
     }
 
-    // Painonappi käyttöön ohjelmassa
-    buttonHandle = PIN_open(&buttonState, buttonConfig);
-    if(!buttonHandle) {
-       System_abort("Error initializing button pin\n");
+    // TODO: Toinen ledi käyttöön ohjelmassa
+    // Toinen ledi käyttöön
+
+
+    // Painonappi 0 käyttöön ohjelmassa
+    button0Handle = PIN_open(&button0State, button0Config);
+    if(!button0Handle) {
+       System_abort("Error initializing button0 pin\n");
     }
 
-    // Painonapille keskeytyksen käsittellijä
-    if (PIN_registerIntCb(buttonHandle, &buttonFxn) != 0) {
+    // Painonappi 1 käyttöön ohjelmassa
+    button1Handle = PIN_open(&button1State, button1Config);
+    if(!button1Handle) {
+       System_abort("Error initializing button1 pin\n");
+    }
+
+    // Painonapille 0 keskeytyksen käsittellijä
+    if (PIN_registerIntCb(button0Handle, &button0Fxn) != 0) {
+       System_abort("Error registering button callback function");
+    }
+
+    // Painonapille 1 keskeytyksen käsittellijä
+    if (PIN_registerIntCb(button1Handle, &button1Fxn) != 0) {
        System_abort("Error registering button callback function");
     }
 

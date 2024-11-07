@@ -102,30 +102,30 @@ Void sensorFxn(UArg arg0, UArg arg1) {
         // Kiihtyvyys ja gyroskooppirajojen tarkistus, ja lähetetään symbolit UARTin kautta
         if (fabs(acl_x) > 80 && acl_z < -97 && acl_z > -105) {
             // Lähetetään kirjain "S" (Morse: "...")
-                sendToUART(".");
-                sendToUART(".");
-                sendToUART(".");
+            sendToUART(".");
+            sendToUART(".");
+            sendToUART(".");
 
-                // Välilyönti kirjainten väliin
-                sendToUART(" ");
+            // Välilyönti kirjainten väliin
+            sendToUART(" ");
 
-                // Lähetetään kirjain "O" (Morse: "---")
-                sendToUART("-");
-                sendToUART("-");
-                sendToUART("-");
+            // Lähetetään kirjain "O" (Morse: "---")
+            sendToUART("-");
+            sendToUART("-");
+            sendToUART("-");
 
-                // Välilyönti kirjainten väliin
-                sendToUART(" ");
+            // Välilyönti kirjainten väliin
+            sendToUART(" ");
 
-                // Lähetetään kirjain "S" (Morse: "...")
-                sendToUART(".");
-                sendToUART(".");
-                sendToUART(".");
+            // Lähetetään kirjain "S" (Morse: "...")
+            sendToUART(".");
+            sendToUART(".");
+            sendToUART(".");
 
-                // Viestin loppu - kolme välilyöntiä
-                sendToUART(" ");
-                sendToUART(" ");
-                sendToUART(" ");
+            // Viestin loppu - kolme välilyöntiä
+            sendToUART(" ");
+            sendToUART(" ");
+            sendToUART(" ");
             Task_sleep(1000000 / Clock_tickPeriod);
         }
         if (fabs(acl_y) > 80 && acl_z < -97 && acl_z > -105) {
@@ -171,10 +171,9 @@ Void sensorFxn(UArg arg0, UArg arg1) {
     }
 }
 
-/* UARTin alustus ja "Hello World" -viestin lähettäminen */
+/* UARTin alustus ilman "Hello World" -viestiä */
 Void uartTaskFxn(UArg arg0, UArg arg1) {
     UART_Params uartParams;
-    const char helloWorld[] = "Hello World\n";
 
     UART_Params_init(&uartParams);
     uartParams.writeDataMode = UART_DATA_TEXT;
@@ -190,9 +189,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
     if (uart == NULL) {
         System_abort("Error opening the UART");
     }
-
-    // Lähetetään alkuviesti UARTin kautta
-    UART_write(uart, helloWorld, strlen(helloWorld));
 }
 
 Int main(void) {

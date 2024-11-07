@@ -6,16 +6,43 @@
 #include <ti/sysbios/knl/Task.h>
 #include <ti/drivers/I2C.h>
 #include <ti/drivers/UART.h>
+#include <ti/drivers/PIN.h>
 #include "Board.h"
 
 #define STACKSIZE 2048
+#define BUFFER_SIZE 128  // Määritellään puskuriin mahtuvien merkkien maksimimäärä
 Char uartTaskStack[STACKSIZE];
+Char logTaskStack[STACKSIZE];
 
 // UART- ja I2C-kahvat
 UART_Handle uart;
 I2C_Handle i2c;
 
+// LED-pinnin kahva
+static PIN_Handle ledPinHandle;
+static PIN_State ledPinState;
+
 #define I2C_ADDRESS 0x48  // Aseta tämä oikeaan I2C-laitteen osoitteeseen
+
+// Julistetaan sendToI2C-funktio
+void sendToI2C(char character);
+
+// LEDin konfiguraatio
+PIN_Config ledPinTable[] = {
+    Board_LED1 | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL | PIN_DRVSTR_MAX,
+    PIN_TERMINATE
+};
+
+// Puskuri UART-merkkejä varten
+char uartBuffer[BUFFER_SIZE];
+int bufferIndex = 0;  // Seuraa seuraavaa vapaata paikkaa puskurissa
+
+// Funktio, joka sytyttää LEDin lyhyeksi tai pitkäksi ajaksi
+void flashLED(UArg arg0, UArg arg1, int duration) {
+    PIN_setOutputValue(ledPinHandle, Board_LED1, 1); // Sytytä LED
+    Task_sleep(duration); // Viive millisekunteina
+    PIN_setOutputValue(ledPinHandle, Board_LED1, 0); // Sammuta LED
+}
 
 // Funktio, joka lähettää merkin I2C:n kautta
 void sendToI2C(char character) {
@@ -33,18 +60,11 @@ void sendToI2C(char character) {
         System_printf("Character '%c' sent to I2C\n", character);
     } else {
         System_printf("Error: Failed to send character '%c' to I2C\n", character);
-
-        // Virheenkorjauksen tulosteet
-        System_printf("I2C transaction details:\n");
-        System_printf(" - Slave address: 0x%X\n", i2cTransaction.slaveAddress);
-        System_printf(" - Message: %s\n", message);
-        System_printf(" - Message length: %d\n", (int)strlen(message));
-        System_flush();
     }
     System_flush();
 }
 
-// UART-lukufunktio
+// UART-lukufunktio ja merkkien tallennus puskuriin
 Void uartTaskFxn(UArg arg0, UArg arg1) {
     UART_Params uartParams;
     char receivedChar;
@@ -62,32 +82,65 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         System_abort("Error opening the UART");
     }
 
-    // I2C-parametrien alustaminen
-    I2C_Params i2cParams;
-    I2C_Params_init(&i2cParams);
-    i2c = I2C_open(Board_I2C, &i2cParams);
-    if (i2c == NULL) {
-        System_abort("Error initializing I2C\n");
-    }
-
     System_printf("Waiting for UART input...\n");
     System_flush();
 
-    // Lue UARTista merkkejä ja lähetä ne suoraan I2C:lle
+    // Lue UARTista merkkejä ja tallenna ne puskuriin
     while (1) {
         UART_read(uart, &receivedChar, 1);  // Lue yksi merkki UARTin kautta
-        sendToI2C(receivedChar);            // Lähetä merkki sellaisenaan I2C:n kautta
+
+        // Tallenna merkki puskuriin, jos tilaa on
+        if (bufferIndex < BUFFER_SIZE - 1) {
+            uartBuffer[bufferIndex++] = receivedChar;
+            uartBuffer[bufferIndex] = '\0';  // Päivitetään nollaterminaattori
+        } else {
+            System_printf("Buffer full, character discarded: '%c'\n", receivedChar);
+            System_flush();
+        }
+
+        // Sytytä LED eri pituiseksi ajaksi riippuen merkistä
+        if (receivedChar == '.') {
+            flashLED(arg0, arg1, 500);  // Lyhyt välähdys (50 ms)
+        } else if (receivedChar == '-') {
+            flashLED(arg0, arg1, 15000);  // Pitkä välähdys (150 ms)
+        } else if (receivedChar == ' ') {
+            Task_sleep(10000); // 1 sekunnin tauko, jos vastaanotetaan välilyönti
+        }
+
+        // Puolen sekunnin tauko jokaisen merkin jälkeen
+        Task_sleep(10000);
+    }
+}
+
+// Tehtävä, joka lukee puskuriin tallennetut merkit ja tyhjentää sen 10 sekunnin välein
+Void logTaskFxn(UArg arg0, UArg arg1) {
+    while (1) {
+        Task_sleep(10000);  // Odota 10 sekuntia
+
+        // Tulostetaan puskuri ja nollataan se
+        System_printf("Buffer contents: %s\n", uartBuffer);
+        System_flush();
+
+        // Nollataan puskuri
+        memset(uartBuffer, 0, sizeof(uartBuffer));
+        bufferIndex = 0;  // Nollaa indeksi
     }
 }
 
 /* Main-funktio */
 Int main(void) {
-    Task_Handle uartTaskHandle;
-    Task_Params uartTaskParams;
+    Task_Handle uartTaskHandle, logTaskHandle;
+    Task_Params uartTaskParams, logTaskParams;
 
     Board_initGeneral();
     Board_initUART();
     Board_initI2C();
+
+    // LEDin alustaminen
+    ledPinHandle = PIN_open(&ledPinState, ledPinTable);
+    if (!ledPinHandle) {
+        System_abort("Error initializing LED pin\n");
+    }
 
     // Luodaan UART-lukutehtävä
     Task_Params_init(&uartTaskParams);
@@ -99,9 +152,18 @@ Int main(void) {
         System_abort("Task create failed!");
     }
 
+    // Luodaan loggaustehtävä
+    Task_Params_init(&logTaskParams);
+    logTaskParams.stackSize = STACKSIZE;
+    logTaskParams.stack = &logTaskStack;
+    logTaskParams.priority = 1;
+    logTaskHandle = Task_create(logTaskFxn, &logTaskParams, NULL);
+    if (logTaskHandle == NULL) {
+        System_abort("Log task create failed!");
+    }
+
     // Käynnistetään BIOS
     BIOS_start();
 
     return (0);
 }
-

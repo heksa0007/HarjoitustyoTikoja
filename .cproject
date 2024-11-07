@@ -107,7 +107,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Heikin_Liikemorse2.c|Heikin_Display_test.c|Heikin_Valomorse.c|Kiihtyvyysanturi_datan_keruu.c|Gyroskooppi_datan_keruu.c|empty.c|src" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="Serial.client_testi2.c|Serial.client_testi.c|project_main.c|Heikin_Display_test.c|Heikin_Valomorse.c|Kiihtyvyysanturi_datan_keruu.c|Gyroskooppi_datan_keruu.c|empty.c|src" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

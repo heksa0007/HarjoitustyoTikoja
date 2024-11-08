@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <stdbool.h>
 
 /* XDCtools files */
 #include <xdc/std.h>
@@ -31,8 +30,6 @@
 Char sensorTaskStack[STACKSIZE];
 Char uartTaskStack[STACKSIZE];
 
-// Message buffer size:
-#define BUFFER_SIZE 128
 
 
 
@@ -88,8 +85,8 @@ static PIN_Config MpuPinConfig[] = {
 
 
 
-// MPU I2C configuration
-static const I2CCC26XX_I2CPinCfg i2cCfg = {
+// MPU uses its own I2C interface
+static const I2CCC26XX_I2CPinCfg i2cMPUCfg = {
     .pinSDA = Board_I2C0_SDA1,
     .pinSCL = Board_I2C0_SCL1
 };
@@ -97,11 +94,10 @@ static const I2CCC26XX_I2CPinCfg i2cCfg = {
 
 
 // Tilakoneen esittely
-enum state { WAITING=1,
+enum state { WAITING=1, DATA_READY,
              READ_COMMANDS, READ_CHARACTERS,
              SEND_MESSAGE, MESSAGE_SENT,
              RECEIVING_MESSAGE, MESSAGE_RECEIVED, SHOW_MESSAGE};
-
 enum state programState = WAITING;
 
 // Alempi tilakone, johon tallennetaan viestin lähettämiseen liittyvä tila.
@@ -111,7 +107,7 @@ enum state programStateWriting = WAITING;
 
 // Tallennusmuuttuja vastaanotetuille viesteille
 char receivedMessageBuffer[BUFFER_SIZE];
-bool charactersWritten = false;
+
 
 
 /*
@@ -130,7 +126,13 @@ float gyro_z = 0.0;
 
 // UART- ja I2C-kahvat
 UART_Handle uart;
-I2C_Handle i2c;
+I2C_Handle i2cMPU;
+
+// MPU I2C configuration
+static const I2CCC26XX_I2CPinCfg i2cMPUCfg = {
+    .pinSDA = Board_I2C0_SDA1,
+    .pinSCL = Board_I2C0_SCL1
+};
 
 
 
@@ -148,24 +150,18 @@ void sendToUART(const char* symbol) {
 
 void button0Fxn(PIN_Handle handle, PIN_Id pinId) {
     System_printf("Button 0 pressed");
-
-    if (programState == WAITING) {
-        programState = READ_CHARACTERS;
-    }
-    else if (programState == READ_CHARACTERS) {
-        if (!charactersWritten)
-            programState = READ_COMMANDS;
-    }
-
-
+    // Vaihdetaan led-pinnin tilaa negaatiolla
+    uint_t pinValue = PIN_getOutputValue( Board_LED0 );
+    pinValue = !pinValue;
+    PIN_setOutputValue( led0Handle, Board_LED0, pinValue );
 }
 
 void button1Fxn(PIN_Handle handle, PIN_Id pinId) {
     System_printf("Button 1 pressed");
     // Vaihdetaan led-pinnin tilaa negaatiolla
-    // uint_t pinValue = PIN_getOutputValue( Board_LED1 );
-    // pinValue = !pinValue;
-    // PIN_setOutputValue( led1Handle, Board_LED1, pinValue );
+    uint_t pinValue = PIN_getOutputValue( Board_LED1 );
+    pinValue = !pinValue;
+    PIN_setOutputValue( led1Handle, Board_LED1, pinValue );
 }
 
 /* Task Functions */
@@ -191,30 +187,33 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         System_abort("Error opening the UART");
     }
 
-    // Odotetaan, että MPU-anturi käynnistyy
-    Task_sleep(1000000 / Clock_tickPeriod);
+
 
     while (1) {
 
 
-        if (fabs(gyro_x) > 150 && fabs(gyro_x) > fabs(gyro_y) && fabs(gyro_x) > fabs(gyro_z)) {
-                        sendToUART(".");  // gyroskoopin x-akselin yläraja
-                        Task_sleep(1000000 / Clock_tickPeriod);
-                    }
-                    if (fabs(gyro_y) > 150 && fabs(gyro_y) > fabs(gyro_x) && fabs(gyro_y) > fabs(gyro_z)) {
-                        sendToUART("-");  // gyroskoopin y-akselin yläraja
-                        Task_sleep(1000000 / Clock_tickPeriod);
-                    }
-                    if (fabs(gyro_z) > 150 && fabs(gyro_z) > fabs(gyro_y) && fabs(gyro_z) > fabs(gyro_x)) {
-                        sendToUART(" ");  // gyroskoopin z-akselin yläraja
-                        Task_sleep(1000000 / Clock_tickPeriod);
-                    }
-
         //// TILAKONE
 
+        if (programState == DATA_READY) {
+
+            // Kun saadaan sensoridataa: mitä tehdään? Tarvitaanko tätä ollenkaan?
+
+            // Valosensori:
+            /*
+            char optDataStr[5];
+            snprintf(optDataStr, 5, "%f\n", ambientLight);
+            System_printf(optDataStr);
+
+            // UART write:
+            sprintf(echoMsg, "%f\n\r", ambientLight);
+            UART_write(uart, echoMsg, strlen(echoMsg));
+            */
+
+            programState = WAITING;
+        }
+
+
         if (programState == RECEIVING_MESSAGE) {
-            System_printf("programState = RECEIVING_MESSAGE\n");
-            System_flush();
             // TODO:
             // Viestin vastaanottaminen
 
@@ -224,8 +223,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
         if (programState == MESSAGE_RECEIVED) {
-            System_printf("programState = MESSAGE_RECEIVED\n");
-            System_flush();
             // TODO:
 
             // Jos oikeassa asennossa ja viestiä ei kirjoiteta
@@ -236,8 +233,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
         if (programState == SHOW_MESSAGE) {
-            System_printf("programState = SHOW_MESSAGE\n");
-            System_flush();
             // TODO:
             // Viestin morsetus
 
@@ -247,54 +242,45 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
         if (programState == READ_COMMANDS) {
-            System_printf("programState = READ_COMMANDS\n");
-            System_flush();
-
-            // Green led on:
-            PIN_setOutputValue( led0Handle, Board_LED0, 1 );
-
             // TODO:
             // Lue komentoja
 
             // kun valmis:
-                    /*{
+                    {
                 programState = SEND_MESSAGE;
                 programStateWriting = SEND_MESSAGE;
-            }*/
+            }
         }
 
 
         if (programState == READ_CHARACTERS) {
-            System_printf("programState = READ_CHARACTERS\n");
-            System_flush();
-
-            // Blinking green led
-            uint_t pinValue = PIN_getOutputValue( Board_LED0 );
-            pinValue = !pinValue;
-            PIN_setOutputValue( led0Handle, Board_LED0, pinValue );
-
             // TODO:
             // Lue merkkejä
 
-            // kun merkki luettu:
-            // charactersWritten = true;
+            if (fabs(gyro_x) > 150 && fabs(gyro_x) > fabs(gyro_y) && fabs(gyro_x) > fabs(gyro_z)) {
+                sendToUART(".");  // gyroskoopin x-akselin yläraja
+                Task_sleep(1000000 / Clock_tickPeriod);
+            }
+            if (fabs(gyro_y) > 150 && fabs(gyro_y) > fabs(gyro_x) && fabs(gyro_y) > fabs(gyro_z)) {
+                sendToUART("-");  // gyroskoopin y-akselin yläraja
+                Task_sleep(1000000 / Clock_tickPeriod);
+            }
+            if (fabs(gyro_z) > 150 && fabs(gyro_z) > fabs(gyro_y) && fabs(gyro_z) > fabs(gyro_x)) {
+                sendToUART(" ");  // gyroskoopin z-akselin yläraja
+                Task_sleep(1000000 / Clock_tickPeriod);
+            }
 
             // kun valmis:
-                    /*{
+                    {
                 programState = SEND_MESSAGE;
                 programStateWriting = SEND_MESSAGE;
-            }*/
+            }
         }
 
 
         if (programState == SEND_MESSAGE) {
-            System_printf("programState = SEND_MESSAGE\n");
-            System_flush();
             // TODO:
             // Lähetä viestit
-
-            // ei lähettämättömiä merkkejä kirjoitettu
-            charactersWritten = false;
 
             // Led0 (virheä) päälle
             programState = MESSAGE_SENT;
@@ -303,8 +289,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
         if (programState == MESSAGE_SENT) {
-            System_printf("programState = MESSAGE_SENT\n");
-            System_flush();
             // TODO:
             // Ajasta 2s
 
@@ -321,11 +305,11 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
         // Just for sanity check for exercise, you can comment this out
-        //System_printf("uartTask\n");
-        //System_flush();
+        System_printf("uartTask\n");
+        System_flush();
 
-        // Ohjelmataajuus (100000 = 0.1s = 10 Hz):
-        Task_sleep(50000 / Clock_tickPeriod);
+        // Ohjelmataajuus:
+        Task_sleep(1000000 / Clock_tickPeriod);
     }
 }
 
@@ -334,24 +318,12 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
-    // Väliaikaiset datamuuttujat
-    float ax, ay, az, gx, gy, gz;
-
     I2C_Handle      i2c;
     I2C_Params      i2cParams;
 
     // Alustetaan i2c-väylä
     I2C_Params_init(&i2cParams);
     i2cParams.bitRate = I2C_400kHz;
-    i2cParams.custom = (uintptr_t)&i2cCfg;
-
-    // MPU power on
-    PIN_setOutputValue(hMpuPin, Board_MPU_POWER, Board_MPU_POWER_ON);
-
-    // Odotetaan, että MPU-anturi käynnistyy
-    Task_sleep(100000 / Clock_tickPeriod);
-    System_printf("MPU9250: Power ON\n");
-    System_flush();
 
     // Avataan I2C väylä
     i2c = I2C_open(Board_I2C_TMP, &i2cParams);
@@ -359,32 +331,22 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         System_abort("Error Initializing I2C\n");
     }
 
-    // MPU:n asetukset ja kalibrointi
-    mpu9250_setup(&i2c);
-    System_printf("MPU9250: Setup and calibration OK\n");
+    float ax, ay, az, gx, gy, gz;
+
+    // Haetaan data MPU-anturin avulla
+    mpu9250_get_data(&i2cMPU, &ax, &ay, &az, &gx, &gy, &gz);
+
+    // Päivitetään globaalit muuttujat ja skaalataan kiihtyvyys arvoille 100 ja gyroskoopin arvoille suoraan
+    acl_x = ax * 100;
+    acl_y = ay * 100;
+    acl_z = az * 100;
+    gyro_x = gx;
+    gyro_y = gy;
+    gyro_z = gz;
+
+    System_printf("Accel: %d, %d, %d | Gyro: %d, %d, %d\n", (int)acl_x, (int)acl_y, (int)acl_z, (int)gyro_x, (int)gyro_y, (int)gyro_z);
     System_flush();
 
-
-
-    // Sensorinlukusilmukka:
-
-    while (1) {
-        // Haetaan data MPU-anturin avulla
-        mpu9250_get_data(&i2c, &ax, &ay, &az, &gx, &gy, &gz);
-
-        // Päivitetään globaalit muuttujat ja skaalataan kiihtyvyys arvoille 100 ja gyroskoopin arvoille suoraan
-        acl_x = ax * 100;
-        acl_y = ay * 100;
-        acl_z = az * 100;
-        gyro_x = gx;
-        gyro_y = gy;
-        gyro_z = gz;
-
-        System_printf("Accel: %d, %d, %d | Gyro: %d, %d, %d\n", (int)acl_x, (int)acl_y, (int)acl_z, (int)gyro_x, (int)gyro_y, (int)gyro_z);
-        System_flush();
-
-        Task_sleep(50000 / Clock_tickPeriod);  // 100000 = 0,1 sekunnin viive
-    }
 
     /*
     // Alusta sensori OPT3001 setup-funktiolla
@@ -414,10 +376,8 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         // Once per second, you can modify this
         Task_sleep(1000000 / Clock_tickPeriod);
     }
-*/
 }
-
-
+*/
 
 
 Int main(void) {

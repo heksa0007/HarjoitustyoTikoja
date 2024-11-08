@@ -102,20 +102,20 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         if (receivedChar == '.') {
             flashLED(arg0, arg1, 500);  // Lyhyt välähdys (50 ms)
         } else if (receivedChar == '-') {
-            flashLED(arg0, arg1, 15000);  // Pitkä välähdys (150 ms)
+            flashLED(arg0, arg1, 1500);  // Pitkä välähdys (150 ms)
         } else if (receivedChar == ' ') {
-            Task_sleep(10000); // 1 sekunnin tauko, jos vastaanotetaan välilyönti
+            Task_sleep(1000); // 1 sekunnin tauko, jos vastaanotetaan välilyönti
         }
 
         // Puolen sekunnin tauko jokaisen merkin jälkeen
-        Task_sleep(10000);
+        Task_sleep(500);
     }
 }
 
 // Tehtävä, joka lukee puskuriin tallennetut merkit ja tyhjentää sen 10 sekunnin välein
 Void logTaskFxn(UArg arg0, UArg arg1) {
     while (1) {
-        Task_sleep(10000);  // Odota 10 sekuntia
+        Task_sleep(100000);  // Odota 10 sekuntia
 
         // Tulostetaan puskuri ja nollataan se
         System_printf("Buffer contents: %s\n", uartBuffer);
@@ -167,3 +167,4 @@ Int main(void) {
 
     return (0);
 }
+

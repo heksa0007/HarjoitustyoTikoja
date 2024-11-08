@@ -100,7 +100,7 @@ Void sensorFxn(UArg arg0, UArg arg1) {
         System_flush();
 
         // Kiihtyvyys ja gyroskooppirajojen tarkistus, ja lähetetään symbolit UARTin kautta
-        if (fabs(acl_x) > 80 && acl_z < -97 && acl_z > -105) {
+        if (fabs(acl_x) > 60 && acl_z < -97 && acl_z > -105) {
             // Lähetetään kirjain "S" (Morse: "...")
             sendToUART(".");
             sendToUART(".");
@@ -128,7 +128,7 @@ Void sensorFxn(UArg arg0, UArg arg1) {
             sendToUART(" ");
             Task_sleep(1000000 / Clock_tickPeriod);
         }
-        if (fabs(acl_y) > 80 && acl_z < -97 && acl_z > -105) {
+        if (fabs(acl_y) > 60 && acl_z < -97 && acl_z > -105) {
             // Lähetetään sana "aasi" Morse-koodattuna
             sendToUART(".");  // a: .-
             sendToUART("-");
@@ -154,15 +154,15 @@ Void sensorFxn(UArg arg0, UArg arg1) {
             Task_sleep(1000000 / Clock_tickPeriod);
         }
 
-        if (fabs(gyro_x) > 200) {
+        if (fabs(gyro_x) > 150 && fabs(gyro_x) > fabs(gyro_y) && fabs(gyro_x) > fabs(gyro_z)) {
             sendToUART(".");  // gyroskoopin x-akselin yläraja
             Task_sleep(1000000 / Clock_tickPeriod);
         }
-        if (fabs(gyro_y) > 200) {
+        if (fabs(gyro_y) > 150 && fabs(gyro_y) > fabs(gyro_x) && fabs(gyro_y) > fabs(gyro_z)) {
             sendToUART("-");  // gyroskoopin y-akselin yläraja
             Task_sleep(1000000 / Clock_tickPeriod);
         }
-        if (fabs(gyro_z) > 200) {
+        if (fabs(gyro_z) > 150 && fabs(gyro_z) > fabs(gyro_y) && fabs(gyro_z) > fabs(gyro_x)) {
             sendToUART(" ");  // gyroskoopin z-akselin yläraja
             Task_sleep(1000000 / Clock_tickPeriod);
         }

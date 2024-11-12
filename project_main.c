@@ -36,6 +36,7 @@ Char uartTaskStack[STACKSIZE];
 
 
 
+
 //// RTOS-muuttujat käyttöön:
 
 // Napit
@@ -112,6 +113,7 @@ enum state programStateWriting = WAITING;
 // Tallennusmuuttuja vastaanotetuille viesteille
 char receivedMessageBuffer[BUFFER_SIZE];
 bool charactersWritten = false;
+bool spacesWritten = 0;
 
 
 /*
@@ -128,9 +130,211 @@ float gyro_y = 0.0;
 float gyro_z = 0.0;
 
 
+
+//// JONOTIETORAKENNE:
+
+// Jonotietorakenteen koko:
+#define SENSORQUEUE_SIZE 21 // jonotietorakenne ottaa sisään arvoja SENSORQUEUE_SIZE-1 verran
+#define SENSORAMOUNT 6
+
+// Jonotietorakenne:
+typedef struct {
+    float data[SENSORAMOUNT][SENSORQUEUE_SIZE];
+    int head;
+    int tail;
+} Queue;
+
+//// Funktioiden esittely:
+
+void initializeQueue(Queue* que);
+bool isEmpty(Queue* que);
+bool isFull(Queue* que);
+void enqueue(Queue* que, float values[SENSORAMOUNT]);
+void dequeue(Queue* que);
+void peek(Queue* que, float values[SENSORAMOUNT]);
+int queuePeek(Queue* que, float values[SENSORAMOUNT][SENSORQUEUE_SIZE]);
+void printQueue(Queue* que);
+
+
+// Jonotietorakenne anturidatalle
+Queue sensorQueue;
+
+// Jonotietorakenteen sensorivakiot:
+enum sensorQueueConstants { ACL_X = 0,
+                            ACL_Y,
+                            ACL_Z,
+                            GYRO_X,
+                            GYRO_Y,
+                            GYRO_Z
+};
+
+
+
+
+
 // UART- ja I2C-kahvat
 UART_Handle uart;
 I2C_Handle i2c;
+
+
+
+// JONOTIETORAKENTEEN FUNKTIOT:
+
+// Jonotietorakenteen alustaminen
+void initializeQueue(Queue* que) {
+    que->head = 0;
+    que->tail = 0;
+}
+
+// Jonotietorakenteen tarkistus: onko tyhjä?
+bool isEmpty(Queue* que) {
+    return (que->head == que->tail);
+}
+
+// Jonotietorakenteen tarkistus: onko täysi?
+bool isFull(Queue* que) {
+    return ((que->head - 1 == que->tail) || (que->head - 1 == que->tail - SENSORQUEUE_SIZE));
+}
+
+// Jonotietorakenteeseen lisääminen
+void enqueue(Queue* que, float values[SENSORAMOUNT]) {
+
+    if (isFull(que)) {
+        System_printf("Queue is full\n");
+        return;
+    }
+
+
+    int sensorIndex;
+    for (sensorIndex = 0; sensorIndex < SENSORAMOUNT; sensorIndex++) {
+        que->data[sensorIndex][que->tail] = values[sensorIndex];
+    }
+
+    que->tail++;
+
+    if (que->tail >= SENSORQUEUE_SIZE) {
+        que->tail -= SENSORQUEUE_SIZE;
+    }
+
+}
+
+// Jonotietorakenteen ensimmäisen elementin poisto
+void dequeue(Queue* que) {
+    if (isEmpty(que)) {
+        System_printf("Queue is empty\n");
+        return;
+    }
+
+    que->head++;
+
+    if (que->head >= SENSORQUEUE_SIZE) {
+        que->head -= SENSORQUEUE_SIZE;
+    }
+
+}
+
+// Jonotietorakenteen ensimmäisen elementin pyytäminen
+void peek(Queue* que, float values[SENSORAMOUNT])
+{
+    if (isEmpty(que)) {
+        System_printf("Queue is empty\n");
+        System_flush();
+        return;
+    }
+
+    int sensorIndex;
+    int headIndex = que->head;
+    if (headIndex < 0)
+        headIndex += SENSORQUEUE_SIZE;
+
+    for (sensorIndex = 0; sensorIndex < SENSORAMOUNT; sensorIndex++) {
+        values[sensorIndex] = que->data[sensorIndex][headIndex + 1];
+    }
+
+}
+
+// Koko jonotietorakenteen pyytäminen
+int queuePeek(Queue* que, float values[SENSORAMOUNT][SENSORQUEUE_SIZE])
+{
+    if (isEmpty(que)) {
+        System_printf("Queue is empty\n");
+        System_flush();
+        return -1;
+    }
+
+
+    int headIndex = que->head;
+
+    if (headIndex > que->tail) {
+        headIndex -= SENSORQUEUE_SIZE;
+    }
+
+
+    int index;
+    int valueIndex = 0;
+    for (index = headIndex; index < que->tail; index++) {
+        int queueIndex;
+
+        if (index < 0) {
+            queueIndex = index + SENSORQUEUE_SIZE;
+        }
+        else
+            queueIndex = index;
+
+
+
+        int sensorIndex;
+
+        for (sensorIndex = 0; sensorIndex < SENSORAMOUNT; sensorIndex++) {
+            values[sensorIndex][valueIndex] = que->data[sensorIndex][queueIndex];
+        }
+
+        valueIndex++;
+    }
+
+    // Palauttaa lukumäärän, monta elementtiä liitettiin annettuun listaan
+    return valueIndex;
+}
+
+
+
+// Tulostaa jonotietorakenteen sisällön
+void printQueue(Queue* que)
+{
+    if (isEmpty(que)) {
+        System_printf("Queue is empty\n");
+        System_flush();
+        return;
+    }
+
+    System_printf("Current Queue:\n");
+
+    int headIndex = que->head;
+
+    if (headIndex > que->tail) {
+        headIndex -= SENSORQUEUE_SIZE;
+    }
+
+    int index;
+    for (index = headIndex; index < que->tail; index++) {
+        int queueIndex;
+
+        if (index < 0) {
+            queueIndex = index + SENSORQUEUE_SIZE;
+        }
+        else
+            queueIndex = index;
+
+        System_printf("Ax %d,\tAy %d,\tAz %d,\tGx %d,\tGy %d,\tGz %d\n",
+                      (int)que->data[ACL_X][queueIndex], (int)que->data[ACL_Y][queueIndex], (int)que->data[ACL_Z][queueIndex],
+                      (int)que->data[GYRO_X][queueIndex], (int)que->data[GYRO_Y][queueIndex], (int)que->data[GYRO_Z][queueIndex]);
+    }
+    System_printf("\n");
+    System_flush();
+}
+
+
+
 
 
 
@@ -144,10 +348,12 @@ void sendToUART(const char* symbol) {
 
 
 
+
+
 // Painonappien RTOS-muuttujat ja alustus
 
 void button0Fxn(PIN_Handle handle, PIN_Id pinId) {
-    System_printf("Button 0 pressed");
+    System_printf("Button 0 pressed\n");
 
     if (programState == WAITING) {
         programState = READ_CHARACTERS;
@@ -155,13 +361,18 @@ void button0Fxn(PIN_Handle handle, PIN_Id pinId) {
     else if (programState == READ_CHARACTERS) {
         if (!charactersWritten)
             programState = READ_COMMANDS;
+        else
+            // TODO: resetoi kirjoitettu viesti!
+            // resetMessage();
+            // Merkitsee viestin tyhjäksi
+            System_printf("Message reset (not implemented yet)\n");
+            charactersWritten = false;
     }
-
-
 }
 
+
 void button1Fxn(PIN_Handle handle, PIN_Id pinId) {
-    System_printf("Button 1 pressed");
+    System_printf("Button 1 pressed\n");
     // Vaihdetaan led-pinnin tilaa negaatiolla
     // uint_t pinValue = PIN_getOutputValue( Board_LED1 );
     // pinValue = !pinValue;
@@ -191,26 +402,23 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         System_abort("Error opening the UART");
     }
 
+    float q_gyro_x;
+    float q_gyro_y;
+    float q_gyro_z;
+    float q_acl_x;
+    float q_acl_y;
+    float q_acl_z;
+
+
     // Odotetaan, että MPU-anturi käynnistyy
     Task_sleep(1000000 / Clock_tickPeriod);
 
+
+
+    //// TILAKONE
+
     while (1) {
 
-
-        if (fabs(gyro_x) > 150 && fabs(gyro_x) > fabs(gyro_y) && fabs(gyro_x) > fabs(gyro_z)) {
-                        sendToUART(".");  // gyroskoopin x-akselin yläraja
-                        Task_sleep(1000000 / Clock_tickPeriod);
-                    }
-                    if (fabs(gyro_y) > 150 && fabs(gyro_y) > fabs(gyro_x) && fabs(gyro_y) > fabs(gyro_z)) {
-                        sendToUART("-");  // gyroskoopin y-akselin yläraja
-                        Task_sleep(1000000 / Clock_tickPeriod);
-                    }
-                    if (fabs(gyro_z) > 150 && fabs(gyro_z) > fabs(gyro_y) && fabs(gyro_z) > fabs(gyro_x)) {
-                        sendToUART(" ");  // gyroskoopin z-akselin yläraja
-                        Task_sleep(1000000 / Clock_tickPeriod);
-                    }
-
-        //// TILAKONE
 
         if (programState == RECEIVING_MESSAGE) {
             System_printf("programState = RECEIVING_MESSAGE\n");
@@ -221,6 +429,8 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             // Viesti vastaanotettu
             programState = MESSAGE_RECEIVED;
         }
+
+
 
 
         if (programState == MESSAGE_RECEIVED) {
@@ -235,6 +445,8 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         }
 
 
+
+
         if (programState == SHOW_MESSAGE) {
             System_printf("programState = SHOW_MESSAGE\n");
             System_flush();
@@ -246,22 +458,116 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         }
 
 
+
+
         if (programState == READ_COMMANDS) {
             System_printf("programState = READ_COMMANDS\n");
             System_flush();
 
+            bool commandSent = false;
+
             // Green led on:
             PIN_setOutputValue( led0Handle, Board_LED0, 1 );
 
-            // TODO:
-            // Lue komentoja
+            // Siirretään sensoridata taulukkoon ja tallennetaan sensoridatapisteiden määrä taulukossa
+            float sensorData[SENSORAMOUNT][SENSORQUEUE_SIZE];
+            int valueAmount = queuePeek(&sensorQueue, sensorData);
 
-            // kun valmis:
-                    /*{
+            // Käy läpi sensoridatan aloittaen vanhimmasta datasta
+            int index;
+            for (index = 0; index < valueAmount; index++) {
+
+                q_gyro_x = sensorData[GYRO_X][index];
+                q_gyro_y = sensorData[GYRO_Y][index];
+                q_gyro_z = sensorData[GYRO_Z][index];
+                q_acl_x = sensorData[ACL_X][index];
+                q_acl_y = sensorData[ACL_Y][index];
+                q_acl_z = sensorData[ACL_Z][index];
+
+
+                // TODO: Oikeat komennot ja niiden tunnistus!
+                // TODO: sendToUART korvataan addToMessage tms
+
+                // KOMENTOJEN LUKU:
+
+                if (fabs(q_gyro_x) > 150 && fabs(q_gyro_x) > fabs(q_gyro_y) && fabs(q_gyro_x) > fabs(q_gyro_z)) {
+                    // gyroskoopin x-akselin yläraja "SOS"
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART(" ");
+                    sendToUART("-");
+                    sendToUART("-");
+                    sendToUART("-");
+                    sendToUART(" ");
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART(" ");
+                    sendToUART(" ");
+                    sendToUART(" ");
+                    initializeQueue(&sensorQueue);
+                    commandSent = true;
+                    break;
+                }
+                if (fabs(q_gyro_y) > 150 && fabs(q_gyro_y) > fabs(q_gyro_x) && fabs(q_gyro_y) > fabs(q_gyro_z)) {
+                    // gyroskoopin y-akselin yläraja "APUA"
+                    sendToUART(".");
+                    sendToUART("-");
+                    sendToUART(" ");
+                    sendToUART(".");
+                    sendToUART("-");
+                    sendToUART("-");
+                    sendToUART(".");
+                    sendToUART(" ");
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART("-");
+                    sendToUART(" ");
+                    sendToUART(".");
+                    sendToUART("-");
+                    sendToUART(" ");
+                    sendToUART(" ");
+                    sendToUART(" ");
+                    initializeQueue(&sensorQueue);
+                    commandSent = true;
+                    break;
+                }
+                if (fabs(q_gyro_z) > 150 && fabs(q_gyro_z) > fabs(q_gyro_y) && fabs(q_gyro_z) > fabs(q_gyro_x)) {
+                    // gyroskoopin z-akselin yläraja "HELP"
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART(" ");
+                    sendToUART(".");
+                    sendToUART(" ");
+                    sendToUART(".");
+                    sendToUART("-");
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART(" ");
+                    sendToUART(".");
+                    sendToUART("-");
+                    sendToUART("-");
+                    sendToUART(".");
+                    sendToUART(" ");
+                    sendToUART(" ");
+                    sendToUART(" ");
+                    initializeQueue(&sensorQueue);
+                    commandSent = true;
+                    break;
+                }
+
+            }
+
+            if (commandSent) {
                 programState = SEND_MESSAGE;
                 programStateWriting = SEND_MESSAGE;
-            }*/
+            }
         }
+
+
 
 
         if (programState == READ_CHARACTERS) {
@@ -273,25 +579,71 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             pinValue = !pinValue;
             PIN_setOutputValue( led0Handle, Board_LED0, pinValue );
 
-            // TODO:
-            // Lue merkkejä
 
-            // kun merkki luettu:
-            // charactersWritten = true;
+            // Siirretään sensoridata taulukkoon ja tallennetaan sensoridatapisteiden määrä taulukossa
+            float sensorData[SENSORAMOUNT][SENSORQUEUE_SIZE];
+            int valueAmount = queuePeek(&sensorQueue, sensorData);
 
-            // kun valmis:
-                    /*{
+            // Käy läpi sensoridatan aloittaen vanhimmasta datasta
+            int index;
+            for (index = 0; index < valueAmount; index++) {
+
+                q_gyro_x = sensorData[GYRO_X][index];
+                q_gyro_y = sensorData[GYRO_Y][index];
+                q_gyro_z = sensorData[GYRO_Z][index];
+                q_acl_x = sensorData[ACL_X][index];
+                q_acl_y = sensorData[ACL_Y][index];
+                q_acl_z = sensorData[ACL_Z][index];
+
+
+                // TODO: Lopulliset merkkien tunnistusliikkeet!
+                // TODO: sendToUART korvataan addToMessage tms
+
+                // MERKKIEN LUKU:
+
+                if (fabs(q_gyro_x) > 150 && fabs(q_gyro_x) > fabs(q_gyro_y) && fabs(q_gyro_x) > fabs(q_gyro_z)) {
+                    sendToUART(".");  // gyroskoopin x-akselin yläraja
+                    initializeQueue(&sensorQueue);
+                    charactersWritten = true;
+                    spacesWritten = 0;
+                    Task_sleep(1000000 / Clock_tickPeriod); // 1 s
+                    break;
+                }
+                if (fabs(q_gyro_y) > 150 && fabs(q_gyro_y) > fabs(q_gyro_x) && fabs(q_gyro_y) > fabs(q_gyro_z)) {
+                    sendToUART("-");  // gyroskoopin y-akselin yläraja
+                    initializeQueue(&sensorQueue);
+                    charactersWritten = true;
+                    spacesWritten = 0;
+                    Task_sleep(1000000 / Clock_tickPeriod); // 1 s
+                    break;
+                }
+                if (fabs(q_gyro_z) > 150 && fabs(q_gyro_z) > fabs(q_gyro_y) && fabs(q_gyro_z) > fabs(q_gyro_x)) {
+                    sendToUART(" ");  // gyroskoopin z-akselin yläraja
+                    initializeQueue(&sensorQueue);
+                    charactersWritten = true;
+                    spacesWritten++;
+                    Task_sleep(1000000 / Clock_tickPeriod); // 1 s
+                    break;
+                }
+
+            }
+
+
+            if (spacesWritten >= 3) {
                 programState = SEND_MESSAGE;
                 programStateWriting = SEND_MESSAGE;
-            }*/
+            }
         }
+
+
 
 
         if (programState == SEND_MESSAGE) {
             System_printf("programState = SEND_MESSAGE\n");
             System_flush();
+
             // TODO:
-            // Lähetä viestit
+            // Lähetä viestit sendToUART:illa vasta tässä vaiheessa!
 
             // ei lähettämättömiä merkkejä kirjoitettu
             charactersWritten = false;
@@ -300,6 +652,8 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             programState = MESSAGE_SENT;
             programStateWriting = MESSAGE_SENT;
         }
+
+
 
 
         if (programState == MESSAGE_SENT) {
@@ -325,7 +679,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         //System_flush();
 
         // Ohjelmataajuus (100000 = 0.1s = 10 Hz):
-        Task_sleep(50000 / Clock_tickPeriod);
+        Task_sleep(200000 / Clock_tickPeriod); // 5 Hz
     }
 }
 
@@ -380,10 +734,36 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         gyro_y = gy;
         gyro_z = gz;
 
-        System_printf("Accel: %d, %d, %d | Gyro: %d, %d, %d\n", (int)acl_x, (int)acl_y, (int)acl_z, (int)gyro_x, (int)gyro_y, (int)gyro_z);
-        System_flush();
 
-        Task_sleep(50000 / Clock_tickPeriod);  // 100000 = 0,1 sekunnin viive
+        // Valmistellaan data jonotietorakennetta varten:
+        float sensorData[SENSORAMOUNT];
+        sensorData[ACL_X] = acl_x;
+        sensorData[ACL_Y] = acl_y;
+        sensorData[ACL_Z] = acl_z;
+        sensorData[GYRO_X] = gyro_x;
+        sensorData[GYRO_Y] = gyro_y;
+        sensorData[GYRO_Z] = gyro_z;
+
+        // Jos jono täynnä, poista vanhin arvo
+        if (isFull(&sensorQueue)) {
+            dequeue(&sensorQueue);
+        }
+
+
+        // Lisää viimeisin sensoridata
+        enqueue(&sensorQueue, sensorData);
+
+        // Tulosta arvot jonotietorakenteesta
+        // printQueue(&sensorQueue);
+
+        // Vaihdetaan led-pinnin tilaa negaatiolla
+        uint_t pinValue = PIN_getOutputValue( Board_LED1 );
+        pinValue = !pinValue;
+        PIN_setOutputValue( led1Handle, Board_LED1, pinValue );
+
+
+        // 100000 = 0,1 sekunnin viive = 10 Hz
+        Task_sleep(50000 / Clock_tickPeriod); // 20 Hz
     }
 
     /*
@@ -436,6 +816,9 @@ Int main(void) {
 
     // UART käyttöön ohjelmassa
     Board_initUART();
+
+    // Alustetaan sensorijonotietorakenne
+    initializeQueue(&sensorQueue);
 
 
     // Ledi 0 (virheä) käyttöön ohjelmassa

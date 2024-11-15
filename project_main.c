@@ -405,6 +405,8 @@ Void powerFxn(PIN_Handle handle, PIN_Id pinId) {
    // Taikamenot
    PIN_close(powerButtonHandle);
    buzzerClose(); // Suljetaan varalta kaiutin, jos ollut päällä
+   PIN_setOutputValue( led0Handle, Board_LED0, 0 );
+   PIN_setOutputValue( led1Handle, Board_LED1, 0 );
    PINCC26XX_setWakeup(powerButtonWakeConfig);
    Power_shutdown(NULL,0);
 }

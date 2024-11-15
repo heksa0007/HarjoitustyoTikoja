@@ -162,7 +162,7 @@ I2C_Handle i2c;
 //// JONOTIETORAKENNE:
 
 // Jonotietorakenteen koko:
-#define SENSORQUEUE_SIZE 21 // jonotietorakenne ottaa sisään arvoja SENSORQUEUE_SIZE-1 verran
+#define SENSORQUEUE_SIZE 65 // jonotietorakenne ottaa sisään arvoja SENSORQUEUE_SIZE-1 verran
 #define SENSORAMOUNT 6
 
 // Jonotietorakenne:
@@ -375,17 +375,21 @@ void button0Fxn(PIN_Handle handle, PIN_Id pinId) {
     System_printf("Button 0 pressed\n");
 
     if (programState == WAITING) {
+        initializeQueue(&sensorQueue);
         programState = READ_CHARACTERS;
     }
     else if (programState == READ_CHARACTERS) {
-        if (!charactersWritten)
+        if (!charactersWritten) {
+            initializeQueue(&sensorQueue);
             programState = READ_COMMANDS;
-        else
+        }
+        else {
             // TODO: resetoi kirjoitettu viesti!
             // resetMessage();
             // Merkitsee viestin tyhjäksi
             System_printf("Message reset (not implemented yet)\n");
             charactersWritten = false;
+        }
     }
 }
 
@@ -451,7 +455,8 @@ static void uartFxn(UART_Handle handle, uint8_t *rxBuf, size_t len) {
        }
    }
 
-   programState = MESSAGE_RECEIVED;
+   if (programState == WAITING)
+       programState = MESSAGE_RECEIVED;
 
 
    // Käsittelijän viimeisenä asiana siirrytään odottamaan uutta keskeytystä..
@@ -725,7 +730,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             }
 
 
-            if (spacesWritten >= 3) {
+            if (spacesWritten >= 2) {
                 spacesWritten = 0;
                 programState = SEND_MESSAGE;
             }

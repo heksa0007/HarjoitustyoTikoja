@@ -42,8 +42,6 @@ Char buzzerTaskStack[STACKSIZE];
 #define BUFFER_SIZE 128
 
 
-
-
 //// RTOS-muuttujat käyttöön:
 
 // Toimintonappi
@@ -126,22 +124,21 @@ static const I2CCC26XX_I2CPinCfg i2cCfg = {
 enum state { WAITING=1,
              READ_COMMANDS, READ_CHARACTERS,
              SEND_MESSAGE, MESSAGE_SENT,
-             RECEIVING_MESSAGE, MESSAGE_RECEIVED, SHOW_MESSAGE};
+             MESSAGE_RECEIVED, SHOW_MESSAGE};
 
 enum state programState = WAITING;
 
-// Alempi tilakone, johon tallennetaan viestin lähettämiseen liittyvä tila.
-// Siksi, että se voidaan palauttaa viestin vastaanottamisen jälkeen
-// ja voidaan jatkaa viestin kirjoittamista välittömästi uudelleen
-enum state programStateWriting = WAITING;
 
 // Tallennusmuuttuja vastaanotetuille viesteille
-char receivedMessageBuffer[BUFFER_SIZE];
+uint8_t uartBuffer[BUFFER_SIZE];
+uint8_t receivedMessageBuffer[BUFFER_SIZE];
+int receivedMessageBufferIndex = 0;
+bool messageReceived = false;
 bool charactersWritten = false;
 bool spacesWritten = 0;
 
 // Buzzerin käyttöönottomuuttuja:
-bool buzzerInUse = true;
+bool buzzerInUse = false;
 
 /*
 // Valoisuuden globaali muuttuja
@@ -373,6 +370,7 @@ void sendToUART(const char* symbol) {
 
 // Painonappien RTOS-muuttujat ja alustus
 
+// Käsittelijämuuttuja toimintonapille
 void button0Fxn(PIN_Handle handle, PIN_Id pinId) {
     System_printf("Button 0 pressed\n");
 
@@ -433,6 +431,42 @@ Void buzzerTaskFxn(UArg arg0, UArg arg1) {
 
 }
 
+// Käsittelijäfunktio viestin vastaanottamiselle
+static void uartFxn(UART_Handle handle, uint8_t *rxBuf, size_t len) {
+
+   // Nyt meillä on siis haluttu määrä merkkejä käytettävissä
+   // rxBuf-taulukossa, pituus len, jota voimme käsitellä halutusti
+
+   int index;
+   for (index = 0; index < len; index++) {
+       if (receivedMessageBufferIndex < BUFFER_SIZE - 1) {
+           receivedMessageBuffer[receivedMessageBufferIndex] = rxBuf[index];
+           receivedMessageBufferIndex++;
+           receivedMessageBuffer[receivedMessageBufferIndex] = '\0';  // Päivitetään nollaterminaattori
+           messageReceived = true;
+       }
+       else {
+           System_printf("Buffer full, character discarded: '%c'\n", rxBuf[index]);
+           System_flush();
+       }
+   }
+
+   programState = MESSAGE_RECEIVED;
+
+
+   // Käsittelijän viimeisenä asiana siirrytään odottamaan uutta keskeytystä..
+   UART_read(handle, rxBuf, 1);
+}
+
+
+
+// Funktio, joka sytyttää LEDin lyhyeksi tai pitkäksi ajaksi
+void flashLED1(UArg arg0, UArg arg1, int duration) {
+    PIN_setOutputValue(led1Handle, Board_LED1, 1); // Sytytä LED
+    Task_sleep(duration); // Viive millisekunteina
+    PIN_setOutputValue(led1Handle, Board_LED1, 0); // Sammuta LED
+}
+
 
 /* Task Functions */
 Void uartTaskFxn(UArg arg0, UArg arg1) {
@@ -446,7 +480,8 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
     uartParams.writeDataMode = UART_DATA_TEXT;
     uartParams.readDataMode = UART_DATA_TEXT;
     uartParams.readEcho = UART_ECHO_OFF;
-    uartParams.readMode = UART_MODE_BLOCKING;
+    uartParams.readMode = UART_MODE_CALLBACK;
+    uartParams.readCallback  = &uartFxn; // Käsittelijäfunktio
     uartParams.baudRate = 9600; // nopeus 9600baud
     uartParams.dataLength = UART_LEN_8; // 8
     uartParams.parityType = UART_PAR_NONE; // n
@@ -456,6 +491,10 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
     if (uart == NULL) {
         System_abort("Error opening the UART");
     }
+
+    // Aloitetaan vastaanotettavien viestien odotus:
+    UART_read(uart, uartBuffer, 1);
+
 
     float q_gyro_x;
     float q_gyro_y;
@@ -471,30 +510,18 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
     //// TILAKONE
-    // jou
+
     while (1) {
-
-
-        if (programState == RECEIVING_MESSAGE) {
-            System_printf("programState = RECEIVING_MESSAGE\n");
-            System_flush();
-            // TODO:
-            // Viestin vastaanottaminen
-
-            // Viesti vastaanotettu
-            programState = MESSAGE_RECEIVED;
-        }
-
 
 
 
         if (programState == MESSAGE_RECEIVED) {
             System_printf("programState = MESSAGE_RECEIVED\n");
             System_flush();
-            // TODO:
 
-            // Jos oikeassa asennossa ja viestiä ei kirjoiteta
-            // if ((asdf) && (programStateWriting == WAITING))
+            // TODO:
+            // Jos oikeassa asennossa
+            // if (asdf)
                 // Näytetään viesti
                 programState = SHOW_MESSAGE;
         }
@@ -508,8 +535,23 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             // TODO:
             // Viestin morsetus
 
-            // kun valmis:
-                programState = WAITING;
+            int index;
+            for (index = 0; index < receivedMessageBufferIndex; index++) {
+                // Sytytä LED eri pituiseksi ajaksi riippuen merkistä
+                if (receivedMessageBuffer[index] == '.') {
+                    flashLED1(arg0, arg1, 10000 / Clock_tickPeriod);  // Lyhyt välähdys (0.01 s)
+                } else if (receivedMessageBuffer[index] == '-') {
+                    flashLED1(arg0, arg1, 500000 / Clock_tickPeriod);  // Pitkä välähdys (0.5 s)
+                } else if (receivedMessageBuffer[index] == ' ') {
+                    Task_sleep(500000 / Clock_tickPeriod); // 0.5 sekunnin tauko, jos vastaanotetaan välilyönti
+                }
+
+                // 0.25 sekunnin tauko jokaisen merkin jälkeen
+                Task_sleep(250000 / Clock_tickPeriod);
+            }
+
+            receivedMessageBufferIndex = 0;
+            programState = WAITING;
         }
 
 
@@ -618,7 +660,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
             if (commandSent) {
                 programState = SEND_MESSAGE;
-                programStateWriting = SEND_MESSAGE;
             }
         }
 
@@ -685,8 +726,8 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
             if (spacesWritten >= 3) {
+                spacesWritten = 0;
                 programState = SEND_MESSAGE;
-                programStateWriting = SEND_MESSAGE;
             }
         }
 
@@ -705,7 +746,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
             // Led0 (virheä) päälle
             programState = MESSAGE_SENT;
-            programStateWriting = MESSAGE_SENT;
         }
 
 
@@ -718,13 +758,14 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             // Ajasta 2s
 
             // Jos viestejä vastaanotettu lähetyksen aikana:
-            //if  receivedMessageBuffer ei tyhjä:
+            if (messageReceived) {
                 // Siirry vastaanotetun viestin tilaan
-                // programState = MESSAGE_RECEIVED;
-            //else
-            // Siirry takaisin odotustilaan
+                programState = MESSAGE_RECEIVED;
+            }
+            else {
+                // Siirry takaisin odotustilaan
                 programState = WAITING;
-            programStateWriting = WAITING;
+            }
         }
 
 

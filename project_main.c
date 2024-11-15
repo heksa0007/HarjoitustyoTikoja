@@ -435,6 +435,7 @@ Void buzzerTaskFxn(UArg arg0, UArg arg1) {
 
 }
 
+
 // Käsittelijäfunktio viestin vastaanottamiselle
 static void uartFxn(UART_Handle handle, uint8_t *rxBuf, size_t len) {
 
@@ -448,6 +449,7 @@ static void uartFxn(UART_Handle handle, uint8_t *rxBuf, size_t len) {
            receivedMessageBufferIndex++;
            receivedMessageBuffer[receivedMessageBufferIndex] = '\0';  // Päivitetään nollaterminaattori
            messageReceived = true;
+           // PIN_setOutputValue( led1Handle, Board_LED1, 1 ); // Punainen ledi päälle, kun on vastaanotettu viesti
        }
        else {
            System_printf("Buffer full, character discarded: '%c'\n", rxBuf[index]);
@@ -527,8 +529,12 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             // TODO:
             // Jos oikeassa asennossa
             // if (asdf)
+                {
+                PIN_setOutputValue( led1Handle, Board_LED1, 0 ); // Punainen ledi pois päältä ennen viestin näyttämistä
+                Task_sleep(1000000 / Clock_tickPeriod); // 1 sekunnin tauko ennen viestin näyttämistä
                 // Näytetään viesti
                 programState = SHOW_MESSAGE;
+            }
         }
 
 
@@ -537,8 +543,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         if (programState == SHOW_MESSAGE) {
             System_printf("programState = SHOW_MESSAGE\n");
             System_flush();
-            // TODO:
-            // Viestin morsetus
 
             int index;
             for (index = 0; index < receivedMessageBufferIndex; index++) {
@@ -556,6 +560,8 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             }
 
             receivedMessageBufferIndex = 0;
+            messageReceived = false;
+
             programState = WAITING;
         }
 
@@ -607,7 +613,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     sendToUART(".");
                     sendToUART(" ");
                     sendToUART(" ");
-                    sendToUART(" ");
                     initializeQueue(&sensorQueue);
                     commandSent = true;
                     break;
@@ -628,7 +633,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     sendToUART(" ");
                     sendToUART(".");
                     sendToUART("-");
-                    sendToUART(" ");
                     sendToUART(" ");
                     sendToUART(" ");
                     initializeQueue(&sensorQueue);
@@ -653,7 +657,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     sendToUART("-");
                     sendToUART("-");
                     sendToUART(".");
-                    sendToUART(" ");
                     sendToUART(" ");
                     sendToUART(" ");
                     initializeQueue(&sensorQueue);
@@ -707,7 +710,11 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     initializeQueue(&sensorQueue);
                     charactersWritten = true;
                     spacesWritten = 0;
-                    Task_sleep(1000000 / Clock_tickPeriod); // 1 s
+                    buzzerOpen(hBuzzer);
+                    buzzerSetFrequency(392);
+                    Task_sleep(100000 / Clock_tickPeriod);
+                    buzzerClose();
+                    Task_sleep((1000000-100000) / Clock_tickPeriod); // kokonaiskesto 1 s
                     break;
                 }
                 if (fabs(q_gyro_y) > 150 && fabs(q_gyro_y) > fabs(q_gyro_x) && fabs(q_gyro_y) > fabs(q_gyro_z)) {
@@ -715,7 +722,11 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     initializeQueue(&sensorQueue);
                     charactersWritten = true;
                     spacesWritten = 0;
-                    Task_sleep(1000000 / Clock_tickPeriod); // 1 s
+                    buzzerOpen(hBuzzer);
+                    buzzerSetFrequency(329.63);
+                    Task_sleep(300000 / Clock_tickPeriod);
+                    buzzerClose();
+                    Task_sleep((1000000-300000) / Clock_tickPeriod); // kokonaiskesto 1 s
                     break;
                 }
                 if (fabs(q_gyro_z) > 150 && fabs(q_gyro_z) > fabs(q_gyro_y) && fabs(q_gyro_z) > fabs(q_gyro_x)) {
@@ -723,7 +734,11 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     initializeQueue(&sensorQueue);
                     charactersWritten = true;
                     spacesWritten++;
-                    Task_sleep(1000000 / Clock_tickPeriod); // 1 s
+                    buzzerOpen(hBuzzer);
+                    buzzerSetFrequency(261.63);
+                    Task_sleep(500000 / Clock_tickPeriod);
+                    buzzerClose();
+                    Task_sleep((1000000-500000) / Clock_tickPeriod); // kokonaiskesto 1 s
                     break;
                 }
 

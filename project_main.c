@@ -20,16 +20,23 @@
 #include <ti/drivers/UART.h>
 #include <ti/drivers/i2c/I2CCC26XX.h>
 
+//battery
+#include <driverlib/aon_batmon.h>
+
 /* Board Header files */
 #include "Board.h"
 #include "sensors/opt3001.h"
 #include "sensors/mpu9250.h"
+
+//Kaiutin
+#include "buzzer.h"
 
 
 /* Task */
 #define STACKSIZE 2048
 Char sensorTaskStack[STACKSIZE];
 Char uartTaskStack[STACKSIZE];
+Char buzzerTaskStack[STACKSIZE];
 
 // Message buffer size:
 #define BUFFER_SIZE 128
@@ -39,16 +46,24 @@ Char uartTaskStack[STACKSIZE];
 
 //// RTOS-muuttujat käyttöön:
 
-// Napit
+// Toimintonappi
 static PIN_Handle button0Handle;
 static PIN_State button0State;
-static PIN_Handle button1Handle;
-static PIN_State button1State;
+
+// Virtakytkin
+static PIN_Handle powerButtonHandle;
+static PIN_State powerButtonState;
+
+//Kaiutin
+static PIN_Handle hBuzzer;
+static PIN_State sBuzzer;
+
 // Ledit
 static PIN_Handle led0Handle;
 static PIN_State led0State;
 static PIN_Handle led1Handle;
 static PIN_State led1State;
+
 // MPU power pin global variables (kiihtyvyysanturi)
 static PIN_Handle hMpuPin;
 static PIN_State  MpuPinState;
@@ -63,10 +78,20 @@ PIN_Config button0Config[] = {
    PIN_TERMINATE
 };
 
-// Painonappi 1 (on-off)
-PIN_Config button1Config[] = {
-   Board_BUTTON1  | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
+// Virtakytkin. Samalle painonapille kaksi erilaista konfiguraatiota
+PIN_Config powerButtonConfig[] = {
+   Board_BUTTON1 | PIN_INPUT_EN | PIN_PULLUP | PIN_IRQ_NEGEDGE,
    PIN_TERMINATE
+};
+PIN_Config powerButtonWakeConfig[] = {
+   Board_BUTTON1 | PIN_INPUT_EN | PIN_PULLUP | PINCC26XX_WAKEUP_NEGEDGE,
+   PIN_TERMINATE
+};
+
+// Kaiutin
+PIN_Config cBuzzer[] = {
+  Board_BUZZER | PIN_GPIO_OUTPUT_EN | PIN_GPIO_LOW | PIN_PUSHPULL | PIN_DRVSTR_MAX,
+  PIN_TERMINATE
 };
 
 // Ledi 0 (vihreä)
@@ -115,6 +140,8 @@ char receivedMessageBuffer[BUFFER_SIZE];
 bool charactersWritten = false;
 bool spacesWritten = 0;
 
+// Buzzerin käyttöönottomuuttuja:
+bool buzzerInUse = true;
 
 /*
 // Valoisuuden globaali muuttuja
@@ -129,6 +156,10 @@ float gyro_x = 0.0;
 float gyro_y = 0.0;
 float gyro_z = 0.0;
 
+
+// UART- ja I2C-kahvat
+UART_Handle uart;
+I2C_Handle i2c;
 
 
 //// JONOTIETORAKENNE:
@@ -167,14 +198,6 @@ enum sensorQueueConstants { ACL_X = 0,
                             GYRO_Y,
                             GYRO_Z
 };
-
-
-
-
-
-// UART- ja I2C-kahvat
-UART_Handle uart;
-I2C_Handle i2c;
 
 
 
@@ -296,8 +319,6 @@ int queuePeek(Queue* que, float values[SENSORAMOUNT][SENSORQUEUE_SIZE])
     return valueIndex;
 }
 
-
-
 // Tulostaa jonotietorakenteen sisällön
 void printQueue(Queue* que)
 {
@@ -371,13 +392,45 @@ void button0Fxn(PIN_Handle handle, PIN_Id pinId) {
 }
 
 
-void button1Fxn(PIN_Handle handle, PIN_Id pinId) {
-    System_printf("Button 1 pressed\n");
-    // Vaihdetaan led-pinnin tilaa negaatiolla
-    // uint_t pinValue = PIN_getOutputValue( Board_LED1 );
-    // pinValue = !pinValue;
-    // PIN_setOutputValue( led1Handle, Board_LED1, pinValue );
+// Käsittelijäfunktio virtanapille
+Void powerFxn(PIN_Handle handle, PIN_Id pinId) {
+
+   // Näyttö pois päältä
+   // Display_clear(displayHandle);
+   // Display_close(displayHandle);
+
+   // Odotetaan hetki ihan varalta..
+   Task_sleep(100000 / Clock_tickPeriod);
+
+   // Taikamenot
+   PIN_close(powerButtonHandle);
+   buzzerClose(); // Suljetaan varalta kaiutin, jos ollut päällä
+   PINCC26XX_setWakeup(powerButtonWakeConfig);
+   Power_shutdown(NULL,0);
 }
+
+
+//Käsittelijäfunktio kaiuttimelle
+Void buzzerTaskFxn(UArg arg0, UArg arg1) {
+
+    // While loop tarkistaa, onko buzzerin käyttö estetty boolean-muuttujalla
+    while (buzzerInUse) {
+        buzzerOpen(hBuzzer);
+        buzzerSetFrequency(261);
+        Task_sleep(50000 / Clock_tickPeriod);
+        buzzerSetFrequency(293);
+        Task_sleep(50000 / Clock_tickPeriod);
+        buzzerSetFrequency(329);
+        Task_sleep(50000 / Clock_tickPeriod);
+        buzzerSetFrequency(349);
+        Task_sleep(50000 / Clock_tickPeriod);
+        buzzerClose();
+
+        Task_sleep(950000 / Clock_tickPeriod);
+    }
+
+}
+
 
 /* Task Functions */
 Void uartTaskFxn(UArg arg0, UArg arg1) {
@@ -749,17 +802,16 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
             dequeue(&sensorQueue);
         }
 
-
         // Lisää viimeisin sensoridata
         enqueue(&sensorQueue, sensorData);
 
         // Tulosta arvot jonotietorakenteesta
         // printQueue(&sensorQueue);
 
-        // Vaihdetaan led-pinnin tilaa negaatiolla
-        uint_t pinValue = PIN_getOutputValue( Board_LED1 );
-        pinValue = !pinValue;
-        PIN_setOutputValue( led1Handle, Board_LED1, pinValue );
+        // Vaihdetaan led-pinnin tilaa negaatiolla näytteenottotaajuuden visualisoimiseksi
+        // uint_t pinValue = PIN_getOutputValue( Board_LED1 );
+        // pinValue = !pinValue;
+        // PIN_setOutputValue( led1Handle, Board_LED1, pinValue );
 
 
         // 100000 = 0,1 sekunnin viive = 10 Hz
@@ -777,10 +829,10 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         // Lue sensorilta dataa ja tulosta se Debug-ikkunaan merkkijonona
 
         double optData = opt3001_get_data(&i2c);
-        /*char optDataStr[5];
-        snprintf(optDataStr, 5, "%f", optData);
-        System_printf(optDataStr);*/
-/*
+        //char optDataStr[5];
+        //snprintf(optDataStr, 5, "%f", optData);
+        //System_printf(optDataStr);
+
         // JTKJ: Tehtävä 3. Tallenna mittausarvo globaaliin muuttujaan
         //       Muista tilamuutos
 
@@ -793,20 +845,22 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
         // Once per second, you can modify this
         Task_sleep(1000000 / Clock_tickPeriod);
-    }
-*/
+    }*/
 }
 
 
 
 
 Int main(void) {
+    uint32_t patteri = HWREG(AON_BATMON_BASE + AON_BATMON_O_BAT);
 
     // Task variables
     Task_Handle sensorTaskHandle;
     Task_Params sensorTaskParams;
     Task_Handle uartTaskHandle;
     Task_Params uartTaskParams;
+    Task_Handle buzzerTask;
+    Task_Params buzzerTaskParams;
 
     // Initialize board
     Board_initGeneral();
@@ -839,10 +893,16 @@ Int main(void) {
        System_abort("Error initializing button0 pin\n");
     }
 
-    // Painonappi 1 (on-off) käyttöön ohjelmassa
-    button1Handle = PIN_open(&button1State, button1Config);
-    if(!button1Handle) {
-       System_abort("Error initializing button1 pin\n");
+    //Virtakytkin käyttöön ohjelmassa
+    powerButtonHandle = PIN_open(&powerButtonState, powerButtonConfig);
+    if(!powerButtonHandle) {
+       System_abort("Error initializing power button\n");
+    }
+
+    // Buzzer
+    hBuzzer = PIN_open(&sBuzzer, cBuzzer);
+    if (hBuzzer == NULL) {
+      System_abort("Pin open failed!");
     }
 
 
@@ -858,12 +918,21 @@ Int main(void) {
        System_abort("Error registering button callback function");
     }
 
-    // Painonapille 1 keskeytyksen käsittellijä
-    if (PIN_registerIntCb(button1Handle, &button1Fxn) != 0) {
-       System_abort("Error registering button callback function");
+    // Virtakytkimelle keskeytyksen käsittelijä
+    if (PIN_registerIntCb(powerButtonHandle, &powerFxn) != 0) {
+       System_abort("Error registering power button callback");
     }
 
-    // Luo tehtävä sensorin lukemiseen
+    // Luodaan tehtävä kaiuttimen äänentoistolle
+    Task_Params_init(&buzzerTaskParams);
+    buzzerTaskParams.stackSize = STACKSIZE;
+    buzzerTaskParams.stack = &buzzerTaskStack;
+    buzzerTask = Task_create((Task_FuncPtr)buzzerTaskFxn, &buzzerTaskParams, NULL);
+    if (buzzerTask == NULL) {
+      System_abort("Task create failed!");
+    }
+
+    // Luodaan tehtävä sensorin lukemiseen
     Task_Params_init(&sensorTaskParams);
     sensorTaskParams.stackSize = STACKSIZE;
     sensorTaskParams.stack = &sensorTaskStack;
@@ -885,6 +954,10 @@ Int main(void) {
 
     /* Sanity check */
     System_printf("Hello world!\n");
+    System_flush();
+
+    // Akun varauksen näyttäminen:
+    System_printf("Battery voltage: %ld\n",patteri/256);
     System_flush();
 
     /* Start BIOS */

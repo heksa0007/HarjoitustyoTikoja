@@ -102,7 +102,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
         if (receivedChar == '.') {
             flashLED(arg0, arg1, 500);  // Lyhyt välähdys (50 ms)
         } else if (receivedChar == '-') {
-            flashLED(arg0, arg1, 1500);  // Pitkä välähdys (150 ms)
+            flashLED(arg0, arg1, 10000);  // Pitkä välähdys (150 ms)
         } else if (receivedChar == ' ') {
             Task_sleep(1000); // 1 sekunnin tauko, jos vastaanotetaan välilyönti
         }

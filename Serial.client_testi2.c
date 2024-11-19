@@ -4,19 +4,21 @@
 #include <xdc/runtime/System.h>
 #include <ti/sysbios/BIOS.h>
 #include <ti/sysbios/knl/Task.h>
+#include <ti/sysbios/knl/Clock.h>
 #include <ti/drivers/I2C.h>
 #include <ti/drivers/UART.h>
 #include <ti/drivers/PIN.h>
-#include <ti/sysbios/knl/Clock.h>
 #include "Board.h"
 
 #define STACKSIZE 2048
 #define BUFFER_SIZE 128
 
 Char uartTaskStack[STACKSIZE];
+Char monitorTaskStack[STACKSIZE];
 Char logTaskStack[STACKSIZE];
 
 int pointState1 = 0, pointState = 0, lineState = 0, memoryState1 = 0, memoryState2 = 0;
+UInt32 lastMessageTime = 0;
 
 // UART- ja I2C-kahvat
 UART_Handle uart;
@@ -34,6 +36,19 @@ void flashLED(int duration) {
     PIN_setOutputValue(ledPinHandle, Board_LED1, 0);
 }
 
+// Funktio, joka tarkistaa viestien vastaanottoajan ja nollaa pointStaten, jos viestiä ei tule sekunnin sisällä
+Void monitorTaskFxn(UArg arg0, UArg arg1) {
+    while (1) {
+        UInt32 currentTime = Clock_getTicks();
+        if ((currentTime - lastMessageTime) > (3000000 / Clock_tickPeriod)) {
+            pointState = 0;
+            lineState = 0;
+        }
+        Task_sleep(500);  // Tarkista 0,5 sekunnin välein
+    }
+}
+
+// UART-lukufunktio ja merkkien käsittely
 Void uartTaskFxn(UArg arg0, UArg arg1) {
     UART_Params uartParams;
     char receivedChar;
@@ -56,49 +71,54 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
     while (1) {
         UART_read(uart, &receivedChar, 1);
 
+        lastMessageTime = Clock_getTicks();  // Päivitetään viimeisimmän viestin aika
+
         if (receivedChar == '.') {
             flashLED(500);
-                pointState++;
-
+            pointState++;
+            System_printf("Received: '.', pointState: %d\n", pointState); // Tulostus tarkistamiseen
         } else if (receivedChar == '-') {
             flashLED(1000);
             lineState++;
+            System_printf("Received: '-', pointState: %d\n", pointState); // Tulostus tarkistamiseen
         } else if (receivedChar == ' ') {
             Task_sleep(1000);
 
+            System_printf("Space received. Current pointState: %d\n", pointState); // Lisätty tarkistukseen
 
 
-            if (pointState == 6 && lineState == 3) {
-                System_printf("SOS detected!\n");
-                System_flush();
-
-                int i;
-                for (i = 0; i < 3; i++) {
-                    flashLED(200);
-                    Task_sleep(200);
-                }
-
-
-                memoryState1 = 0;
-            }
         }
 
         Task_sleep(500);
     }
 }
 
+// Funktio, joka tulostaa pointState-arvon sekunnin välein
 Void logTaskFxn(UArg arg0, UArg arg1) {
     while (1) {
-        System_printf("pS: %d, pS1: %d, lS: %d, mS1: %d, mS1: %d\n", pointState, pointState1, lineState, memoryState1, memoryState2);
+        System_printf("pointState: %d\n", pointState);
         System_flush();
+        if (pointState == 6 && lineState == 3) {
+                        System_printf("SOS detected!\n");
+                        System_flush();
+
+                        int i;
+                        for (i = 0; i < 3; i++) {
+                            flashLED(200);
+                            Task_sleep(200);
+                        }
+
+
+                        pointState = 0; // Nollataan pointState
+                    }
         Task_sleep(1000000 / Clock_tickPeriod);  // 1 sekunnin viive
     }
 }
 
 /* Main function */
 Int main(void) {
-    Task_Handle uartTaskHandle, logTaskHandle;
-    Task_Params uartTaskParams, logTaskParams;
+    Task_Handle uartTaskHandle, monitorTaskHandle, logTaskHandle;
+    Task_Params uartTaskParams, monitorTaskParams, logTaskParams;
 
     Board_initGeneral();
     Board_initUART();
@@ -114,7 +134,16 @@ Int main(void) {
     uartTaskParams.priority = 2;
     uartTaskHandle = Task_create(uartTaskFxn, &uartTaskParams, NULL);
     if (uartTaskHandle == NULL) {
-        System_abort("Task create failed!");
+        System_abort("UART task create failed!");
+    }
+
+    Task_Params_init(&monitorTaskParams);
+    monitorTaskParams.stackSize = STACKSIZE;
+    monitorTaskParams.stack = &monitorTaskStack;
+    monitorTaskParams.priority = 1;
+    monitorTaskHandle = Task_create(monitorTaskFxn, &monitorTaskParams, NULL);
+    if (monitorTaskHandle == NULL) {
+        System_abort("Monitor task create failed!");
     }
 
     Task_Params_init(&logTaskParams);
@@ -129,3 +158,4 @@ Int main(void) {
     BIOS_start();
     return 0;
 }
+

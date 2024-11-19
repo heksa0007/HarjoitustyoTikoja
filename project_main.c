@@ -521,20 +521,23 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
     while (1) {
 
 
-
+// HOX Otettu ulos rakenteesta koska oli vaikeuksia!!!!
         if (programState == MESSAGE_RECEIVED) {
             System_printf("programState = MESSAGE_RECEIVED\n");
             System_flush();
 
             // TODO:
             // Jos oikeassa asennossa
-            // if (asdf)
+           if (acl_z > 50 && acl_z < 90 && acl_x < 90 && acl_x > 50 && acl_y < 20 && acl_y > 0)
                 {
                 PIN_setOutputValue( led1Handle, Board_LED1, 0 ); // Punainen ledi pois päältä ennen viestin näyttämistä
                 Task_sleep(1000000 / Clock_tickPeriod); // 1 sekunnin tauko ennen viestin näyttämistä
                 // Näytetään viesti
                 programState = SHOW_MESSAGE;
             }
+           else {
+               programState = READ_CHARACTERS;
+           }
         }
 
 
@@ -768,7 +771,10 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             programState = MESSAGE_SENT;
         }
 
-
+        if (messageReceived) {
+                        // Siirry vastaanotetun viestin tilaan
+                        programState = MESSAGE_RECEIVED;
+                    }
 
 
         if (programState == MESSAGE_SENT) {

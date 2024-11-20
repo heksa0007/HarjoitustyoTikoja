@@ -37,16 +37,17 @@ void flashLED(int duration) {
 }
 
 // Funktio, joka tarkistaa viestien vastaanottoajan ja nollaa pointStaten, jos viestiä ei tule sekunnin sisällä
-Void monitorTaskFxn(UArg arg0, UArg arg1) {
+/*Void monitorTaskFxn(UArg arg0, UArg arg1) {
     while (1) {
         UInt32 currentTime = Clock_getTicks();
         if ((currentTime - lastMessageTime) > (3000000 / Clock_tickPeriod)) {
             pointState = 0;
             lineState = 0;
+            pointState1 = 0;
         }
         Task_sleep(500);  // Tarkista 0,5 sekunnin välein
     }
-}
+}*/
 
 // UART-lukufunktio ja merkkien käsittely
 Void uartTaskFxn(UArg arg0, UArg arg1) {
@@ -75,11 +76,24 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
         if (receivedChar == '.') {
             flashLED(500);
-            pointState++;
+            if (lineState == 3 && pointState == 3){
+            pointState1++;
+            }
+            else {
+                pointState++;
+                lineState = 0;
+                pointState1 = 0;
+                }
             System_printf("Received: '.', pointState: %d\n", pointState); // Tulostus tarkistamiseen
         } else if (receivedChar == '-') {
             flashLED(1000);
+            if (pointState == 3 && lineState < 4) {
             lineState++;
+            } else {
+                pointState = 0;
+                lineState = 0;
+                pointState1 = 0;
+            }
             System_printf("Received: '-', pointState: %d\n", pointState); // Tulostus tarkistamiseen
         } else if (receivedChar == ' ') {
             Task_sleep(1000);
@@ -98,7 +112,7 @@ Void logTaskFxn(UArg arg0, UArg arg1) {
     while (1) {
         System_printf("pointState: %d\n", pointState);
         System_flush();
-        if (pointState == 6 && lineState == 3) {
+        if (pointState == 3 && lineState == 3 && pointState1 == 3) {
                         System_printf("SOS detected!\n");
                         System_flush();
 
@@ -137,14 +151,14 @@ Int main(void) {
         System_abort("UART task create failed!");
     }
 
-    Task_Params_init(&monitorTaskParams);
+  /*  Task_Params_init(&monitorTaskParams);
     monitorTaskParams.stackSize = STACKSIZE;
     monitorTaskParams.stack = &monitorTaskStack;
     monitorTaskParams.priority = 1;
     monitorTaskHandle = Task_create(monitorTaskFxn, &monitorTaskParams, NULL);
     if (monitorTaskHandle == NULL) {
         System_abort("Monitor task create failed!");
-    }
+    } */
 
     Task_Params_init(&logTaskParams);
     logTaskParams.stackSize = STACKSIZE;

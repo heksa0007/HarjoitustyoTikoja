@@ -66,8 +66,6 @@ static PIN_State led1State;
 static PIN_Handle hMpuPin;
 static PIN_State  MpuPinState;
 
-
-
 //// Alustetaan pinniconfiguraatiot:
 
 // Painonappi 0 (toiminto)
@@ -153,11 +151,40 @@ float gyro_x = 0.0;
 float gyro_y = 0.0;
 float gyro_z = 0.0;
 
+// SOS merkin tarkistus muuttujat
+int pointState1 = 0, pointState = 0, lineState = 0;
+UInt32 lastMessageTime = 0;
 
 // UART- ja I2C-kahvat
 UART_Handle uart;
 I2C_Handle i2c;
 
+// Funktio, joka tarkistaa SOS-viestin ehdot
+void checkSOSCondition() {
+    if (pointState == 3 && pointState1 == 3 && lineState == 3) {
+        //RIKU TÄHÄN SE SOS MERKKI ÄÄNI!!
+        System_printf("SOS detected!\n");
+        System_flush();
+
+        // Nollataan tilamuuttujat
+        pointState = 0;
+        lineState = 0;
+        pointState1 = 0;
+    }
+}
+
+// Funktio, joka tarkistaa viestien vastaanottoajan ja nollaa pointStaten, jos viestiä ei tule sekunnin sisällä
+Void monitorTaskFxn(UArg arg0, UArg arg1) {
+    while (1) {
+        UInt32 currentTime = Clock_getTicks();
+        if ((currentTime - lastMessageTime) > (6000000 / Clock_tickPeriod)) {
+            pointState = 0;
+            lineState = 0;
+            pointState1 = 0;
+        }
+        Task_sleep(500);  // Tarkista 0,5 sekunnin välein
+    }
+}
 
 //// JONOTIETORAKENNE:
 
@@ -552,11 +579,19 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                 // Sytytä LED eri pituiseksi ajaksi riippuen merkistä
                 if (receivedMessageBuffer[index] == '.') {
                     flashLED1(arg0, arg1, 10000 / Clock_tickPeriod);  // Lyhyt välähdys (0.01 s)
+                    if (lineState == 3 && pointState == 3){
+                        pointState1++;//SOS merkin tarkistus ...
+
+                    }
+                        else {
+                            pointState++;//SOS merkin tarkistus toinen ...
+                            }
                 } else if (receivedMessageBuffer[index] == '-') {
                     flashLED1(arg0, arg1, 500000 / Clock_tickPeriod);  // Pitkä välähdys (0.5 s)
+                    lineState++; //SOS merkin tarkistus ---
                 } else if (receivedMessageBuffer[index] == ' ') {
                     Task_sleep(500000 / Clock_tickPeriod); // 0.5 sekunnin tauko, jos vastaanotetaan välilyönti
-                }
+                   }
 
                 // 0.25 sekunnin tauko jokaisen merkin jälkeen
                 Task_sleep(250000 / Clock_tickPeriod);
@@ -564,6 +599,12 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
             receivedMessageBufferIndex = 0;
             messageReceived = false;
+
+            // Tarkistetaan SOS-viestin ehdot
+                    checkSOSCondition();
+                    pointState = 0;
+                    lineState = 0;
+                    pointState1 = 0;
 
             programState = WAITING;
         }

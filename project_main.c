@@ -130,17 +130,20 @@ enum state programState = WAITING;
 // Tallennusmuuttuja vastaanotetuille viesteille
 uint8_t uartBuffer[BUFFER_SIZE];
 uint8_t receivedMessageBuffer[BUFFER_SIZE];
+uint8_t writtenMessageBuffer[BUFFER_SIZE];
 int receivedMessageBufferIndex = 0;
+int writtenIndex = 0;
+int spacesWritten = 0;
+bool writtenMessageBufferOverload = false;
 bool messageReceived = false;
 bool charactersWritten = false;
-bool spacesWritten = 0;
 
 // Buzzerin käyttöönottomuuttuja:
 bool buzzerInUse = false;
 
 
 // Valoisuuden globaali muuttuja
-double ambientLight = 0;
+double ambientLight = -1000;
 
 
 // kiihtyvyyden ja gyroskooppien globaalit muuttujat (float-tyyppisenä)
@@ -159,116 +162,134 @@ UInt32 lastMessageTime = 0;
 UART_Handle uart;
 I2C_Handle i2c;
 
-//Funktio, joka soittaa musiikkia, CHATGPT:n säveltämä
-void playMusic1(){
+//Funktio, joka soittaa musiikkia, Tetris theme, Hirokazu Tanakan säveltämä (1989)
+void playMusic1() {
 
-        buzzerOpen(hBuzzer);
+    buzzerOpen(hBuzzer);
 
-        // Ensimmäinen fraasi (taajuudet ja tauot 1,5x alkuperäiset)
-            buzzerSetFrequency(330); // E4
-            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    // Ensimmäinen fraasi (taajuudet ja tauot 1,5x alkuperäiset)
+    buzzerSetFrequency(330); // E4
+    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(247); // B3
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(247); // B3
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(261); // C4
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(261); // C4
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(294); // D4
-            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(294); // D4
+    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(261); // C4
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(261); // C4
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(247); // B3
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(247); // B3
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(440); // A4
-            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(440); // A4
+    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(440); // A4
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(440); // A4
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(261); // C4
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(261); // C4
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(330); // E4
-            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(330); // E4
+    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(294); // D4
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(294); // D4
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(261); // C4
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(261); // C4
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(247); // B3
-            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(247); // B3
+    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(247); // B3
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(247); // B3
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(261); // C4
-            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(261); // C4
+    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(294); // D4
-            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(294); // D4
+    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(330); // E4
-            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(330); // E4
+    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(261); // C4
-            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(261); // C4
+    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(440); // A4
-            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(440); // A4
+    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod); // Tauko
 
-            buzzerSetFrequency(440); // A4
-            Task_sleep(600000 / Clock_tickPeriod); // 600 ms
-            buzzerSetFrequency(0); // Tauko
-            Task_sleep(1200000 / Clock_tickPeriod); // Tauko
+    buzzerSetFrequency(440); // A4
+    Task_sleep(600000 / Clock_tickPeriod); // 600 ms
+    buzzerSetFrequency(0); // Tauko
+    Task_sleep(1200000 / Clock_tickPeriod); // Tauko
 
-            // Lopetetaan sumutin
-            buzzerSetFrequency(0);
-            buzzerClose();
-    }
+    // Lopetetaan musiikki
+    buzzerSetFrequency(0);
+    buzzerClose();
+}
+
+
+void resetSound() {
+    buzzerOpen(hBuzzer);
+    buzzerSetFrequency(261);
+    Task_sleep(50000 / Clock_tickPeriod);
+    buzzerSetFrequency(293);
+    Task_sleep(50000 / Clock_tickPeriod);
+    buzzerSetFrequency(329);
+    Task_sleep(50000 / Clock_tickPeriod);
+    buzzerSetFrequency(349);
+    Task_sleep(50000 / Clock_tickPeriod);
+    buzzerClose();
+
+    Task_sleep(950000 / Clock_tickPeriod);
+}
+
+
 
 
 // Funktio, joka tarkistaa SOS-viestin ehdot
@@ -299,7 +320,7 @@ Void monitorTaskFxn(UArg arg0, UArg arg1) {
     }
 }
 
-//// JONOTIETORAKENNE:
+//// JONOTIETORAKENNE (Arttu):
 
 // Jonotietorakenteen koko:
 #define SENSORQUEUE_SIZE 65 // jonotietorakenne ottaa sisään arvoja SENSORQUEUE_SIZE-1 verran
@@ -360,7 +381,6 @@ bool isFull(Queue* que) {
 void enqueue(Queue* que, float values[SENSORAMOUNT]) {
 
     if (isFull(que)) {
-        System_printf("Queue is full\n");
         return;
     }
 
@@ -381,7 +401,6 @@ void enqueue(Queue* que, float values[SENSORAMOUNT]) {
 // Jonotietorakenteen ensimmäisen elementin poisto
 void dequeue(Queue* que) {
     if (isEmpty(que)) {
-        System_printf("Queue is empty\n");
         return;
     }
 
@@ -397,8 +416,6 @@ void dequeue(Queue* que) {
 void peek(Queue* que, float values[SENSORAMOUNT])
 {
     if (isEmpty(que)) {
-        System_printf("Queue is empty\n");
-        System_flush();
         return;
     }
 
@@ -417,8 +434,6 @@ void peek(Queue* que, float values[SENSORAMOUNT])
 int queuePeek(Queue* que, float values[SENSORAMOUNT][SENSORQUEUE_SIZE])
 {
     if (isEmpty(que)) {
-        System_printf("Queue is empty\n");
-        System_flush();
         return -1;
     }
 
@@ -512,35 +527,24 @@ void sendToUART(const char* symbol) {
 
 // Käsittelijämuuttuja toimintonapille
 void button0Fxn(PIN_Handle handle, PIN_Id pinId) {
-    System_printf("Button 0 pressed\n");
-
     if (programState == WAITING) {
         initializeQueue(&sensorQueue);
         programState = READ_CHARACTERS;
     }
     else if (programState == READ_CHARACTERS) {
-        if (!charactersWritten) {
-            initializeQueue(&sensorQueue);
-            programState = READ_COMMANDS;
-        }
-        else {
-            // TODO: resetoi kirjoitettu viesti!
-            // resetMessage();
-            // Merkitsee viestin tyhjäksi
-            System_printf("Message reset (not implemented yet)\n");
-            charactersWritten = false;
-        }
+        initializeQueue(&sensorQueue);
+        programState = READ_COMMANDS;
+        charactersWritten = false;
+        writtenIndex = 0;
+    }
+    else if (programState == READ_COMMANDS) {
+        programState = WAITING;
     }
 }
 
 
 // Käsittelijäfunktio virtanapille
 Void powerFxn(PIN_Handle handle, PIN_Id pinId) {
-
-   // Näyttö pois päältä
-   // Display_clear(displayHandle);
-   // Display_close(displayHandle);
-
    // Odotetaan hetki ihan varalta..
    Task_sleep(100000 / Clock_tickPeriod);
 
@@ -553,27 +557,6 @@ Void powerFxn(PIN_Handle handle, PIN_Id pinId) {
    Power_shutdown(NULL,0);
 }
 
-
-//Käsittelijäfunktio kaiuttimelle
-Void buzzerTaskFxn(UArg arg0, UArg arg1) {
-
-    // While loop tarkistaa, onko buzzerin käyttö estetty boolean-muuttujalla
-    while (buzzerInUse) {
-        buzzerOpen(hBuzzer);
-        buzzerSetFrequency(261);
-        Task_sleep(50000 / Clock_tickPeriod);
-        buzzerSetFrequency(293);
-        Task_sleep(50000 / Clock_tickPeriod);
-        buzzerSetFrequency(329);
-        Task_sleep(50000 / Clock_tickPeriod);
-        buzzerSetFrequency(349);
-        Task_sleep(50000 / Clock_tickPeriod);
-        buzzerClose();
-
-        Task_sleep(950000 / Clock_tickPeriod);
-    }
-
-}
 
 
 // Käsittelijäfunktio viestin vastaanottamiselle
@@ -589,7 +572,7 @@ static void uartFxn(UART_Handle handle, uint8_t *rxBuf, size_t len) {
            receivedMessageBufferIndex++;
            receivedMessageBuffer[receivedMessageBufferIndex] = '\0';  // Päivitetään nollaterminaattori
            messageReceived = true;
-           // PIN_setOutputValue( led1Handle, Board_LED1, 1 ); // Punainen ledi päälle, kun on vastaanotettu viesti
+           PIN_setOutputValue( led1Handle, Board_LED1, 1 ); // Punainen ledi päälle, kun on vastaanotettu viesti
        }
        else {
            System_printf("Buffer full, character discarded: '%c'\n", rxBuf[index]);
@@ -621,14 +604,13 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
     // UARTin alustus: 9600,8n1
 
     UART_Params uartParams;
-    char echoMsg[5];
 
     UART_Params_init(&uartParams);
     uartParams.writeDataMode = UART_DATA_TEXT;
     uartParams.readDataMode = UART_DATA_TEXT;
     uartParams.readEcho = UART_ECHO_OFF;
     uartParams.readMode = UART_MODE_CALLBACK;
-    uartParams.readCallback  = &uartFxn; // Käsittelijäfunktio
+    uartParams.readCallback = &uartFxn; // Käsittelijäfunktio
     uartParams.baudRate = 9600; // nopeus 9600baud
     uartParams.dataLength = UART_LEN_8; // 8
     uartParams.parityType = UART_PAR_NONE; // n
@@ -646,9 +628,9 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
     float q_gyro_x;
     float q_gyro_y;
     float q_gyro_z;
-    float q_acl_x;
-    float q_acl_y;
-    float q_acl_z;
+    //float q_acl_x;
+    //float q_acl_y;
+    //float q_acl_z;
 
 
     // Odotetaan, että MPU-anturi käynnistyy
@@ -656,36 +638,31 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
 
-    //// TILAKONE
+    //// TILAKONE (rakenne: Arttu)
 
     while (1) {
 
+        if (programState == WAITING) {
 
-// HOX Otettu ulos rakenteesta koska oli vaikeuksia!!!!
+            PIN_setOutputValue( led0Handle, Board_LED0, 0 );
+
+        }
+
+
         if (programState == MESSAGE_RECEIVED) {
-            System_printf("programState = MESSAGE_RECEIVED\n");
-            System_flush();
 
-            // TODO:
             // Jos oikeassa asennossa
-           if (acl_z > 50 && acl_z < 90 && acl_x < 90 && acl_x > 50 && acl_y < 20 && acl_y > 0)
-                {
+            if (acl_z > 50 && acl_z < 90 && acl_x < 90 && acl_x > 50 && acl_y < 20 && acl_y > 0) {
                 PIN_setOutputValue( led1Handle, Board_LED1, 0 ); // Punainen ledi pois päältä ennen viestin näyttämistä
                 Task_sleep(1000000 / Clock_tickPeriod); // 1 sekunnin tauko ennen viestin näyttämistä
                 // Näytetään viesti
                 programState = SHOW_MESSAGE;
             }
-           else {
-               programState = READ_CHARACTERS;
-           }
         }
 
 
 
-
         if (programState == SHOW_MESSAGE) {
-            System_printf("programState = SHOW_MESSAGE\n");
-            System_flush();
 
             int index;
             for (index = 0; index < receivedMessageBufferIndex; index++) {
@@ -693,18 +670,23 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                 if (receivedMessageBuffer[index] == '.') {
                     flashLED1(arg0, arg1, 10000 / Clock_tickPeriod);  // Lyhyt välähdys (0.01 s)
                     if (lineState == 3 && pointState == 3){
-                        pointState1++;//SOS merkin tarkistus ...
-
+                        pointState1++; //SOS merkin tarkistus ...
                     }
-                        else {
-                            pointState++;//SOS merkin tarkistus toinen ...
-                            }
+                    else {
+                        pointState++; //SOS merkin tarkistus toinen ...
+                    }
                 } else if (receivedMessageBuffer[index] == '-') {
                     flashLED1(arg0, arg1, 500000 / Clock_tickPeriod);  // Pitkä välähdys (0.5 s)
-                    lineState++; //SOS merkin tarkistus ---
+                    if (pointState == 3) // Jos jo tullut 3 pistettä
+                        lineState++; //SOS merkin tarkistus ---
+                    else {
+                        pointState = 0;
+                        lineState = 0;
+                        pointState1 = 0;
+                    }
                 } else if (receivedMessageBuffer[index] == ' ') {
                     Task_sleep(500000 / Clock_tickPeriod); // 0.5 sekunnin tauko, jos vastaanotetaan välilyönti
-                   }
+                }
 
                 // 0.25 sekunnin tauko jokaisen merkin jälkeen
                 Task_sleep(250000 / Clock_tickPeriod);
@@ -714,10 +696,10 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
             messageReceived = false;
 
             // Tarkistetaan SOS-viestin ehdot
-                    checkSOSCondition();
-                    pointState = 0;
-                    lineState = 0;
-                    pointState1 = 0;
+            checkSOSCondition();
+            pointState = 0;
+            lineState = 0;
+            pointState1 = 0;
 
             programState = WAITING;
         }
@@ -726,8 +708,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
         if (programState == READ_COMMANDS) {
-            System_printf("programState = READ_COMMANDS\n");
-            System_flush();
 
             bool commandSent = false;
 
@@ -745,9 +725,9 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                 q_gyro_x = sensorData[GYRO_X][index];
                 q_gyro_y = sensorData[GYRO_Y][index];
                 q_gyro_z = sensorData[GYRO_Z][index];
-                q_acl_x = sensorData[ACL_X][index];
-                q_acl_y = sensorData[ACL_Y][index];
-                q_acl_z = sensorData[ACL_Z][index];
+                //q_acl_x = sensorData[ACL_X][index];
+                //q_acl_y = sensorData[ACL_Y][index];
+                //q_acl_z = sensorData[ACL_Z][index];
 
 
                 // TODO: Oikeat komennot ja niiden tunnistus!
@@ -775,21 +755,26 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     break;
                 }
                 if (fabs(q_gyro_y) > 150 && fabs(q_gyro_y) > fabs(q_gyro_x) && fabs(q_gyro_y) > fabs(q_gyro_z)) {
-                    // gyroskoopin y-akselin yläraja "APUA"
+                    // gyroskoopin y-akselin yläraja "ATTACK"
                     sendToUART(".");
+                    sendToUART("-");
+                    sendToUART(" ");
+                    sendToUART("-");
+                    sendToUART(" ");
                     sendToUART("-");
                     sendToUART(" ");
                     sendToUART(".");
                     sendToUART("-");
+                    sendToUART(" ");
+                    sendToUART("-");
+                    sendToUART(".");
                     sendToUART("-");
                     sendToUART(".");
                     sendToUART(" ");
-                    sendToUART(".");
+                    sendToUART("-");
                     sendToUART(".");
                     sendToUART("-");
                     sendToUART(" ");
-                    sendToUART(".");
-                    sendToUART("-");
                     sendToUART(" ");
                     sendToUART(" ");
                     initializeQueue(&sensorQueue);
@@ -797,23 +782,23 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     break;
                 }
                 if (fabs(q_gyro_z) > 150 && fabs(q_gyro_z) > fabs(q_gyro_y) && fabs(q_gyro_z) > fabs(q_gyro_x)) {
-                    // gyroskoopin z-akselin yläraja "HELP"
-                    sendToUART(".");
-                    sendToUART(".");
-                    sendToUART(".");
-                    sendToUART(".");
-                    sendToUART(" ");
-                    sendToUART(".");
-                    sendToUART(" ");
-                    sendToUART(".");
-                    sendToUART("-");
+                    // gyroskoopin z-akselin yläraja "IRTI"
                     sendToUART(".");
                     sendToUART(".");
                     sendToUART(" ");
+
                     sendToUART(".");
                     sendToUART("-");
-                    sendToUART("-");
                     sendToUART(".");
+                    sendToUART(" ");
+
+                    sendToUART("-");
+                    sendToUART(" ");
+
+                    sendToUART(".");
+                    sendToUART(".");
+                    sendToUART(" ");
+
                     sendToUART(" ");
                     sendToUART(" ");
                     initializeQueue(&sensorQueue);
@@ -832,13 +817,21 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
         if (programState == READ_CHARACTERS) {
-            System_printf("programState = READ_CHARACTERS\n");
-            System_flush();
 
             // Blinking green led
             uint_t pinValue = PIN_getOutputValue( Board_LED0 );
             pinValue = !pinValue;
             PIN_setOutputValue( led0Handle, Board_LED0, pinValue );
+
+            if (writtenIndex != 0) {
+                if ((ambientLight >= 0) && (ambientLight < 5)) {
+
+                    charactersWritten = false;
+                    writtenIndex = 0;
+                    // Soita reset-ääni
+                    resetSound();
+                }
+            }
 
 
             // Siirretään sensoridata taulukkoon ja tallennetaan sensoridatapisteiden määrä taulukossa
@@ -852,19 +845,24 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                 q_gyro_x = sensorData[GYRO_X][index];
                 q_gyro_y = sensorData[GYRO_Y][index];
                 q_gyro_z = sensorData[GYRO_Z][index];
-                q_acl_x = sensorData[ACL_X][index];
-                q_acl_y = sensorData[ACL_Y][index];
-                q_acl_z = sensorData[ACL_Z][index];
+                //q_acl_x = sensorData[ACL_X][index];
+                //q_acl_y = sensorData[ACL_Y][index];
+                //q_acl_z = sensorData[ACL_Z][index];
 
-
-                // TODO: Lopulliset merkkien tunnistusliikkeet!
-                // TODO: sendToUART korvataan addToMessage tms
 
                 // MERKKIEN LUKU:
 
                 if (fabs(q_gyro_x) > 150 && fabs(q_gyro_x) > fabs(q_gyro_y) && fabs(q_gyro_x) > fabs(q_gyro_z)) {
-                    sendToUART(".");  // gyroskoopin x-akselin yläraja
-                    initializeQueue(&sensorQueue);
+                    // gyroskoopin x-akselin yläraja
+                    if (writtenIndex < BUFFER_SIZE) {
+                        writtenMessageBuffer[writtenIndex] = 1; // "." = 1
+                        writtenIndex++;
+                    }
+                    else {
+                        writtenMessageBufferOverload = true;
+                        programState = SEND_MESSAGE;
+                    }
+
                     charactersWritten = true;
                     spacesWritten = 0;
                     buzzerOpen(hBuzzer);
@@ -872,11 +870,21 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     Task_sleep(100000 / Clock_tickPeriod);
                     buzzerClose();
                     Task_sleep((1000000-100000) / Clock_tickPeriod); // kokonaiskesto 1 s
+                    initializeQueue(&sensorQueue);
                     break;
                 }
                 if (fabs(q_gyro_y) > 150 && fabs(q_gyro_y) > fabs(q_gyro_x) && fabs(q_gyro_y) > fabs(q_gyro_z)) {
-                    sendToUART("-");  // gyroskoopin y-akselin yläraja
-                    initializeQueue(&sensorQueue);
+                    // gyroskoopin y-akselin yläraja
+
+                    if (writtenIndex < BUFFER_SIZE) {
+                        writtenMessageBuffer[writtenIndex] = 2; // "-" = 2
+                        writtenIndex++;
+                    }
+                    else {
+                        writtenMessageBufferOverload = true;
+                        programState = SEND_MESSAGE;
+                    }
+
                     charactersWritten = true;
                     spacesWritten = 0;
                     buzzerOpen(hBuzzer);
@@ -884,11 +892,20 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     Task_sleep(300000 / Clock_tickPeriod);
                     buzzerClose();
                     Task_sleep((1000000-300000) / Clock_tickPeriod); // kokonaiskesto 1 s
+                    initializeQueue(&sensorQueue);
                     break;
                 }
                 if (fabs(q_gyro_z) > 150 && fabs(q_gyro_z) > fabs(q_gyro_y) && fabs(q_gyro_z) > fabs(q_gyro_x)) {
-                    sendToUART(" ");  // gyroskoopin z-akselin yläraja
-                    initializeQueue(&sensorQueue);
+                    // gyroskoopin z-akselin yläraja
+                    if (writtenIndex < BUFFER_SIZE) {
+                        writtenMessageBuffer[writtenIndex] = 0; // " " = 0
+                        writtenIndex++;
+                    }
+                    else {
+                        writtenMessageBufferOverload = true;
+                        programState = SEND_MESSAGE;
+                    }
+
                     charactersWritten = true;
                     spacesWritten++;
                     buzzerOpen(hBuzzer);
@@ -896,6 +913,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                     Task_sleep(500000 / Clock_tickPeriod);
                     buzzerClose();
                     Task_sleep((1000000-500000) / Clock_tickPeriod); // kokonaiskesto 1 s
+                    initializeQueue(&sensorQueue);
                     break;
                 }
 
@@ -912,30 +930,53 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
         if (programState == SEND_MESSAGE) {
-            System_printf("programState = SEND_MESSAGE\n");
-            System_flush();
 
-            // TODO:
+            // Jos viestibuffer täynnä, poista viimeinen keskeneräinen kirjain!
+            if (writtenMessageBufferOverload) {
+                while (writtenMessageBuffer[writtenIndex-1] != 0) {
+                    writtenIndex--;
+                }
+            }
+
             // Lähetä viestit sendToUART:illa vasta tässä vaiheessa!
+            int index;
+            for (index = 0; index < writtenIndex; index++) {
+                switch (writtenMessageBuffer[index]){
+                case 0:
+                    sendToUART(" ");
+                    break;
+                case 1:
+                    sendToUART(".");
+                    break;
+                case 2:
+                    sendToUART("-");
+                    break;
+                }
+            }
+
+            // Varalta jos kyseessä overload, lähetetään viestin päättävä välilyönti:
+            if (writtenMessageBufferOverload)
+                sendToUART(" ");
+
+            writtenMessageBufferOverload = false;
+            writtenIndex = 0;
 
             // ei lähettämättömiä merkkejä kirjoitettu
             charactersWritten = false;
 
             // Led0 (virheä) päälle
+            PIN_setOutputValue( led0Handle, Board_LED0, 1 );
             programState = MESSAGE_SENT;
         }
 
-        if (messageReceived) {
-                        // Siirry vastaanotetun viestin tilaan
-                        programState = MESSAGE_RECEIVED;
-                    }
 
 
         if (programState == MESSAGE_SENT) {
-            System_printf("programState = MESSAGE_SENT\n");
-            System_flush();
-            // TODO:
+
             // Ajasta 2s
+            Task_sleep((2000000) / Clock_tickPeriod);
+            // Led0 (vihreä) pois päältä
+            PIN_setOutputValue( led0Handle, Board_LED0, 0 );
 
             // Jos viestejä vastaanotettu lähetyksen aikana:
             if (messageReceived) {
@@ -947,12 +988,6 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                 programState = WAITING;
             }
         }
-
-
-
-        // Just for sanity check for exercise, you can comment this out
-        //System_printf("uartTask\n");
-        //System_flush();
 
         // Ohjelmataajuus (100000 = 0.1s = 10 Hz):
         Task_sleep(200000 / Clock_tickPeriod); // 5 Hz
@@ -1031,61 +1066,48 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
 
         // Haetaan data MPU-anturin avulla
-        if(toggle == 0){
-        I2C_open(Board_I2C_TMP, &i2cParams);
-        mpu9250_get_data(&i2c, &ax, &ay, &az, &gx, &gy, &gz);
+        if(toggle == 0) {
+            I2C_open(Board_I2C_TMP, &i2cParams);
+            mpu9250_get_data(&i2c, &ax, &ay, &az, &gx, &gy, &gz);
 
-        // Päivitetään globaalit muuttujat ja skaalataan kiihtyvyys arvoille 100 ja gyroskoopin arvoille suoraan
-        acl_x = ax * 100;
-        acl_y = ay * 100;
-        acl_z = az * 100;
-        gyro_x = gx;
-        gyro_y = gy;
-        gyro_z = gz;
+            // Päivitetään globaalit muuttujat ja skaalataan kiihtyvyys arvoille 100 ja gyroskoopin arvoille suoraan
+            acl_x = ax * 100;
+            acl_y = ay * 100;
+            acl_z = az * 100;
+            gyro_x = gx;
+            gyro_y = gy;
+            gyro_z = gz;
 
 
-        // Valmistellaan data jonotietorakennetta varten:
-        float sensorData[SENSORAMOUNT];
-        sensorData[ACL_X] = acl_x;
-        sensorData[ACL_Y] = acl_y;
-        sensorData[ACL_Z] = acl_z;
-        sensorData[GYRO_X] = gyro_x;
-        sensorData[GYRO_Y] = gyro_y;
-        sensorData[GYRO_Z] = gyro_z;
+            // Valmistellaan data jonotietorakennetta varten:
+            float sensorData[SENSORAMOUNT];
+            sensorData[ACL_X] = acl_x;
+            sensorData[ACL_Y] = acl_y;
+            sensorData[ACL_Z] = acl_z;
+            sensorData[GYRO_X] = gyro_x;
+            sensorData[GYRO_Y] = gyro_y;
+            sensorData[GYRO_Z] = gyro_z;
 
-        // Jos jono täynnä, poista vanhin arvo
-        if (isFull(&sensorQueue)) {
-            dequeue(&sensorQueue);
+            // Jos jono täynnä, poista vanhin arvo
+            if (isFull(&sensorQueue)) {
+                dequeue(&sensorQueue);
+            }
+
+            // Lisää viimeisin sensoridata
+            enqueue(&sensorQueue, sensorData);
+
+
+            I2C_close(i2c);
         }
+        else {
+            //Avataan OPT I2C väylä
+            i2cOPT = I2C_open(Board_I2C_TMP, &i2cOPTParams);
+            //Luetaan OPT dataa ja tallennetaan globaaliin muuttujaan
+            double optData = opt3001_get_data(&i2cOPT);
+            ambientLight = optData;
 
-        // Lisää viimeisin sensoridata
-        enqueue(&sensorQueue, sensorData);
-
-        // Tulosta arvot jonotietorakenteesta
-        // printQueue(&sensorQueue);
-
-        // Vaihdetaan led-pinnin tilaa negaatiolla näytteenottotaajuuden visualisoimiseksi
-        // uint_t pinValue = PIN_getOutputValue( Board_LED1 );
-        // pinValue = !pinValue;
-        // PIN_setOutputValue( led1Handle, Board_LED1, pinValue );
-
-
-
-        I2C_close(i2c);
-        }
-        else{
-        //Avataan OPT I2C väylä
-        i2cOPT = I2C_open(Board_I2C_TMP, &i2cOPTParams);
-        //Luetaan OPT dataa ja tallennetaan globaaliin muuttujaan
-        double optData = opt3001_get_data(&i2cOPT);
-        ambientLight = optData;
-
-        if(ambientLight > 1000){
-                    playMusic1();
-                }
-
-        // Suljetaan OPT-anturin I2C-väylä
-        I2C_close(i2cOPT);
+            // Suljetaan OPT-anturin I2C-väylä
+            I2C_close(i2cOPT);
         }
 
         toggle = !toggle;
@@ -1095,34 +1117,6 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
 
     }
 
-    /*
-    // Alusta sensori OPT3001 setup-funktiolla
-    // Laita ennen funktiokutsua eteen 100ms viive (Task_sleep)
-    Task_sleep(10000 / Clock_tickPeriod);
-    opt3001_setup(&i2c);
-
-    while (1) {
-
-        // Lue sensorilta dataa ja tulosta se Debug-ikkunaan merkkijonona
-
-        double optData = opt3001_get_data(&i2c);
-        //char optDataStr[5];
-        //snprintf(optDataStr, 5, "%f", optData);
-        //System_printf(optDataStr);
-
-        // JTKJ: Tehtävä 3. Tallenna mittausarvo globaaliin muuttujaan
-        //       Muista tilamuutos
-
-        ambientLight = optData;
-        programState = DATA_READY;
-
-        // Just for sanity check for exercise, you can comment this out
-        System_printf("sensorTask\n");
-        System_flush();
-
-        // Once per second, you can modify this
-        Task_sleep(1000000 / Clock_tickPeriod);
-    }*/
 }
 
 
@@ -1136,7 +1130,6 @@ Int main(void) {
     Task_Params sensorTaskParams;
     Task_Handle uartTaskHandle;
     Task_Params uartTaskParams;
-    Task_Handle buzzerTask;
     Task_Params buzzerTaskParams;
 
     // Initialize board
@@ -1204,10 +1197,6 @@ Int main(void) {
     Task_Params_init(&buzzerTaskParams);
     buzzerTaskParams.stackSize = STACKSIZE;
     buzzerTaskParams.stack = &buzzerTaskStack;
-    buzzerTask = Task_create((Task_FuncPtr)buzzerTaskFxn, &buzzerTaskParams, NULL);
-    if (buzzerTask == NULL) {
-      System_abort("Task create failed!");
-    }
 
     // Luodaan tehtävä sensorin lukemiseen
     Task_Params_init(&sensorTaskParams);

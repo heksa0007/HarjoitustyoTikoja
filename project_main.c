@@ -138,10 +138,10 @@ bool spacesWritten = 0;
 // Buzzerin käyttöönottomuuttuja:
 bool buzzerInUse = false;
 
-/*
+
 // Valoisuuden globaali muuttuja
-double ambientLight = -1000.0;
-*/
+double ambientLight = 0;
+
 
 // kiihtyvyyden ja gyroskooppien globaalit muuttujat (float-tyyppisenä)
 float acl_x = 0.0;
@@ -159,10 +159,123 @@ UInt32 lastMessageTime = 0;
 UART_Handle uart;
 I2C_Handle i2c;
 
+//Funktio, joka soittaa musiikkia, CHATGPT:n säveltämä
+void playMusic1(){
+
+        buzzerOpen(hBuzzer);
+
+        // Ensimmäinen fraasi (taajuudet ja tauot 1,5x alkuperäiset)
+            buzzerSetFrequency(330); // E4
+            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(247); // B3
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(261); // C4
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(294); // D4
+            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(261); // C4
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(247); // B3
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(440); // A4
+            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(440); // A4
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(261); // C4
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(330); // E4
+            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(294); // D4
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(261); // C4
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(247); // B3
+            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(247); // B3
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(261); // C4
+            Task_sleep(150000 / Clock_tickPeriod); // 150 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(300000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(294); // D4
+            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(330); // E4
+            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(261); // C4
+            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(440); // A4
+            Task_sleep(300000 / Clock_tickPeriod); // 300 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(600000 / Clock_tickPeriod); // Tauko
+
+            buzzerSetFrequency(440); // A4
+            Task_sleep(600000 / Clock_tickPeriod); // 600 ms
+            buzzerSetFrequency(0); // Tauko
+            Task_sleep(1200000 / Clock_tickPeriod); // Tauko
+
+            // Lopetetaan sumutin
+            buzzerSetFrequency(0);
+            buzzerClose();
+    }
+
+
 // Funktio, joka tarkistaa SOS-viestin ehdot
 void checkSOSCondition() {
     if (pointState == 3 && pointState1 == 3 && lineState == 3) {
         //RIKU TÄHÄN SE SOS MERKKI ÄÄNI!!
+        playMusic1();
         System_printf("SOS detected!\n");
         System_flush();
 
@@ -850,17 +963,26 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
 Void sensorTaskFxn(UArg arg0, UArg arg1) {
-
+    int toggle = 0;
     // Väliaikaiset datamuuttujat
     float ax, ay, az, gx, gy, gz;
 
+    // Own i2c-interface for MPU9250 sensor
     I2C_Handle      i2c;
     I2C_Params      i2cParams;
+    //OPT
+    I2C_Handle i2cOPT;
+    I2C_Params i2cOPTParams;
+
 
     // Alustetaan i2c-väylä
     I2C_Params_init(&i2cParams);
     i2cParams.bitRate = I2C_400kHz;
     i2cParams.custom = (uintptr_t)&i2cCfg;
+
+    // Alustetaan i2c-väylä OPT
+    I2C_Params_init(&i2cOPTParams);
+    i2cParams.bitRate = I2C_400kHz;
 
     // MPU power on
     PIN_setOutputValue(hMpuPin, Board_MPU_POWER, Board_MPU_POWER_ON);
@@ -881,12 +1003,36 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
     System_printf("MPU9250: Setup and calibration OK\n");
     System_flush();
 
+    // Suljetaan MPU:n I2C-väylä
+    I2C_close(i2c);
+    System_printf("MPU9250: I2C closed\n");
+    System_flush();
+
+    // Avataan OPT-anturin I2C-väylä
+    i2cOPT = I2C_open(Board_I2C_TMP, &i2cOPTParams);
+    if (i2cOPT == NULL) {
+        System_abort("Error Initializing I2C for OPT\n");
+    }
+
+    // OPT-anturin asetukset
+    opt3001_setup(&i2cOPT);
+    System_printf("OPT3001: Setup OK\n");
+    System_flush();
+
+    // Suljetaan OPT-anturin I2C-väylä
+    I2C_close(i2cOPT);
+    System_printf("OPT3001: I2C closed\n");
+    System_flush();
 
 
     // Sensorinlukusilmukka:
 
     while (1) {
+
+
         // Haetaan data MPU-anturin avulla
+        if(toggle == 0){
+        I2C_open(Board_I2C_TMP, &i2cParams);
         mpu9250_get_data(&i2c, &ax, &ay, &az, &gx, &gy, &gz);
 
         // Päivitetään globaalit muuttujat ja skaalataan kiihtyvyys arvoille 100 ja gyroskoopin arvoille suoraan
@@ -924,8 +1070,29 @@ Void sensorTaskFxn(UArg arg0, UArg arg1) {
         // PIN_setOutputValue( led1Handle, Board_LED1, pinValue );
 
 
+
+        I2C_close(i2c);
+        }
+        else{
+        //Avataan OPT I2C väylä
+        i2cOPT = I2C_open(Board_I2C_TMP, &i2cOPTParams);
+        //Luetaan OPT dataa ja tallennetaan globaaliin muuttujaan
+        double optData = opt3001_get_data(&i2cOPT);
+        ambientLight = optData;
+
+        if(ambientLight > 1000){
+                    playMusic1();
+                }
+
+        // Suljetaan OPT-anturin I2C-väylä
+        I2C_close(i2cOPT);
+        }
+
+        toggle = !toggle;
+
         // 100000 = 0,1 sekunnin viive = 10 Hz
-        Task_sleep(50000 / Clock_tickPeriod); // 20 Hz
+        Task_sleep(25000 / Clock_tickPeriod); // 40 Hz
+
     }
 
     /*

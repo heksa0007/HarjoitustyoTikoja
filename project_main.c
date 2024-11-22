@@ -292,14 +292,12 @@ void resetSound() {
 
 
 
-// Funktio, joka tarkistaa SOS-viestin ehdot
+// Funktio, joka tarkistaa SOS-viestin ehdot  (Heikki)
 void checkSOSCondition() {
     if (pointState == 3 && pointState1 == 3 && lineState == 3) {
-        //RIKU TÄHÄN SE SOS MERKKI ÄÄNI!!
         playMusic1();
-        System_printf("SOS detected!\n");
-        System_flush();
-
+        System_printf("SOS detected!\n");   // POISTAA SAA
+        System_flush();                     // POISTAA SAA
         // Nollataan tilamuuttujat
         pointState = 0;
         lineState = 0;
@@ -307,6 +305,7 @@ void checkSOSCondition() {
     }
 }
 
+// POISTAA SAA  koko tuleva funktio jonotietorakenteeseen saakka sillä tätä ei minun mielestä enää oikeasti käytetä kun muutin nollaustapaa
 // Funktio, joka tarkistaa viestien vastaanottoajan ja nollaa pointStaten, jos viestiä ei tule sekunnin sisällä
 Void monitorTaskFxn(UArg arg0, UArg arg1) {
     while (1) {
@@ -511,7 +510,7 @@ void printQueue(Queue* que)
 
 
 
-// Funktio yksittäisen symbolin lähettämiseen UARTin kautta
+// Funktio yksittäisen symbolin lähettämiseen UARTin kautta (Heikki)
 void sendToUART(const char* symbol) {
     char message[5];
     sprintf(message, "%s\r\n\0", symbol);  // Muodostaa viestin, joka sisältää 4 tavua
@@ -651,7 +650,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
         if (programState == MESSAGE_RECEIVED) {
 
-            // Jos oikeassa asennossa
+            // Jos oikeassa asennossa (Heikki)
             if (acl_z > 50 && acl_z < 90 && acl_x < 90 && acl_x > 50 && acl_y < 20 && acl_y > 0) {
                 PIN_setOutputValue( led1Handle, Board_LED1, 0 ); // Punainen ledi pois päältä ennen viestin näyttämistä
                 Task_sleep(1000000 / Clock_tickPeriod); // 1 sekunnin tauko ennen viestin näyttämistä
@@ -663,7 +662,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
         if (programState == SHOW_MESSAGE) {
-
+            //Uartilta sensortagille tulevien merkkien tunnistus ja sos merkkiä varten olevan tunnistus systeemi(Heikki)
             int index;
             for (index = 0; index < receivedMessageBufferIndex; index++) {
                 // Sytytä LED eri pituiseksi ajaksi riippuen merkistä
@@ -734,7 +733,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
                 // TODO: sendToUART korvataan addToMessage tms
 
                 // KOMENTOJEN LUKU:
-
+                // Komentojen luku ehdot (Heikki)
                 if (fabs(q_gyro_x) > 150 && fabs(q_gyro_x) > fabs(q_gyro_y) && fabs(q_gyro_x) > fabs(q_gyro_z)) {
                     // gyroskoopin x-akselin yläraja "SOS"
                     sendToUART(".");
@@ -851,7 +850,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
                 // MERKKIEN LUKU:
-
+                // Merkkien luku ehdot (Heikki)
                 if (fabs(q_gyro_x) > 150 && fabs(q_gyro_x) > fabs(q_gyro_y) && fabs(q_gyro_x) > fabs(q_gyro_z)) {
                     // gyroskoopin x-akselin yläraja
                     if (writtenIndex < BUFFER_SIZE) {

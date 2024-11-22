@@ -494,7 +494,7 @@ void MPU9250SelfTest(float * destination) // Should return percent deviation fro
 }
 
 /**************** JTKJ: DO NOT MODIFY ANYTHING ABOVE THIS LINE ****************/
-
+// Funktio, jota kutsumalla saadaan luettua kiihtyvyysdataa (Riku)
 void mpu9250_get_data(I2C_Handle *i2c, float *ax, float *ay, float *az, float *gx, float *gy, float *gz) {
     uint8_t rawData[14]; // Register data
 

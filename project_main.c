@@ -162,111 +162,111 @@ UInt32 lastMessageTime = 0;
 UART_Handle uart;
 I2C_Handle i2c;
 
-//Funktio, joka soittaa musiikkia, Tetris theme, Hirokazu Tanakan säveltämä (1989)
+//Funktio, joka soittaa musiikkia, Tetris theme, Hirokazu Tanakan säveltämä (1989) (Riku)
 void playMusic1() {
 
     buzzerOpen(hBuzzer);
 
-    // Ensimmäinen fraasi (taajuudet ja tauot 1,5x alkuperäiset)
+    // Aloitetaan musiikin soittaminen
     buzzerSetFrequency(330); // E4
-    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(600000 / Clock_tickPeriod);
 
     buzzerSetFrequency(247); // B3
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(261); // C4
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(294); // D4
-    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(600000 / Clock_tickPeriod);
 
     buzzerSetFrequency(261); // C4
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(247); // B3
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(440); // A4
-    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(600000 / Clock_tickPeriod);
 
     buzzerSetFrequency(440); // A4
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(261); // C4
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(330); // E4
-    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(600000 / Clock_tickPeriod);
 
     buzzerSetFrequency(294); // D4
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(261); // C4
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(247); // B3
-    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(600000 / Clock_tickPeriod);
 
     buzzerSetFrequency(247); // B3
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(261); // C4
-    Task_sleep(150000 / Clock_tickPeriod); // 150 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(300000 / Clock_tickPeriod); // Tauko
+    Task_sleep(150000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(300000 / Clock_tickPeriod);
 
     buzzerSetFrequency(294); // D4
-    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(600000 / Clock_tickPeriod);
 
     buzzerSetFrequency(330); // E4
-    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(600000 / Clock_tickPeriod);
 
     buzzerSetFrequency(261); // C4
-    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(600000 / Clock_tickPeriod);
 
     buzzerSetFrequency(440); // A4
-    Task_sleep(300000 / Clock_tickPeriod); // 300 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(600000 / Clock_tickPeriod); // Tauko
+    Task_sleep(300000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(600000 / Clock_tickPeriod);
 
     buzzerSetFrequency(440); // A4
-    Task_sleep(600000 / Clock_tickPeriod); // 600 ms
-    buzzerSetFrequency(0); // Tauko
-    Task_sleep(1200000 / Clock_tickPeriod); // Tauko
+    Task_sleep(600000 / Clock_tickPeriod);
+    buzzerSetFrequency(0);
+    Task_sleep(1200000 / Clock_tickPeriod);
 
     // Lopetetaan musiikki
     buzzerSetFrequency(0);
@@ -542,7 +542,7 @@ void button0Fxn(PIN_Handle handle, PIN_Id pinId) {
 }
 
 
-// Käsittelijäfunktio virtanapille
+// Käsittelijäfunktio virtanapille (Riku)
 Void powerFxn(PIN_Handle handle, PIN_Id pinId) {
    // Odotetaan hetki ihan varalta..
    Task_sleep(100000 / Clock_tickPeriod);
@@ -598,6 +598,8 @@ void flashLED1(UArg arg0, UArg arg1, int duration) {
 
 
 /* Task Functions */
+
+//UART:in käsittelijäfunktio
 Void uartTaskFxn(UArg arg0, UArg arg1) {
 
     // UARTin alustus: 9600,8n1
@@ -995,7 +997,7 @@ Void uartTaskFxn(UArg arg0, UArg arg1) {
 
 
 
-
+//Anturien käsittelijäfunktio. (Riku: valoanturin lisääminen ohjelmaan)
 Void sensorTaskFxn(UArg arg0, UArg arg1) {
     int toggle = 0;
     // Väliaikaiset datamuuttujat

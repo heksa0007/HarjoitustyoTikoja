@@ -13,7 +13,6 @@ merkitty erikseen tekijää. Harjoitustyössä on käytetty ainestona ja
 apuna kurssin materiaalia.
 */
 
-
 /* C Standard library */
 #include <stdio.h>
 #include <string.h>
@@ -175,7 +174,6 @@ UInt32 lastMessageTime = 0;
 UART_Handle uart;
 I2C_Handle i2c;
 
-
 //// Funktioiden esittely:
 
 void playMusic1();
@@ -188,9 +186,6 @@ static void uartFxn(UART_Handle handle, uint8_t *rxBuf, size_t len);
 void flashLED1(UArg arg0, UArg arg1, int duration);
 void uartTaskFxn(UArg arg0, UArg arg1);
 void sensorTaskFxn(UArg arg0, UArg arg1);
-
-
-
 
 // Funktio, joka soittaa musiikkia, Tetris theme, Hirokazu Tanakan säveltämä (1989) (Riku)
 void playMusic1()
@@ -333,7 +328,6 @@ void checkSOSCondition()
     }
 }
 
-
 //// JONOTIETORAKENNE (Arttu):
 
 // Jonotietorakenteen koko:
@@ -348,7 +342,6 @@ typedef struct
     int tail;
 } Queue;
 
-
 // Jonotietorakenteen funktioiden esittely:
 void initializeQueue(Queue *que);
 bool isEmpty(Queue *que);
@@ -358,7 +351,6 @@ void dequeue(Queue *que);
 void peek(Queue *que, float values[SENSORAMOUNT]);
 int queuePeek(Queue *que, float values[SENSORAMOUNT][SENSORQUEUE_SIZE]);
 void printQueue(Queue *que);
-
 
 // Jonotietorakenne anturidatalle
 Queue sensorQueue;
@@ -534,9 +526,6 @@ void printQueue(Queue *que)
     System_flush();
 }
 
-
-
-
 // Funktio yksittäisen symbolin lähettämiseen UARTin kautta (Heikki)
 void sendToUART(const char *symbol)
 {
@@ -545,7 +534,6 @@ void sendToUART(const char *symbol)
     UART_write(uart, message, strlen(message) + 1); // Lähetetään 4 tavua (mukaan lukien \0)
     Task_sleep(100000 / Clock_tickPeriod);          // Pieni viive viestien välillä
 }
-
 
 // Käsittelijämuuttuja toimintonapille
 void button0Fxn(PIN_Handle handle, PIN_Id pinId)
@@ -586,6 +574,8 @@ void powerFxn(PIN_Handle handle, PIN_Id pinId)
 // Käsittelijäfunktio viestin vastaanottamiselle
 static void uartFxn(UART_Handle handle, uint8_t *rxBuf, size_t len)
 {
+
+    // Saapuvan viestin tallentaminen bufferiin
 
     // Nyt meillä on siis haluttu määrä merkkejä käytettävissä
     // rxBuf-taulukossa, pituus len, jota voimme käsitellä halutusti
@@ -689,7 +679,7 @@ void uartTaskFxn(UArg arg0, UArg arg1)
 
         if (programState == SHOW_MESSAGE)
         {
-            // Uartilta sensortagille tulevien merkkien tunnistus ja sos merkkiä varten olevan tunnistus systeemi(Heikki)
+            // Uartilta sensortagille tulevien merkkien tunnistus ja sos merkkiä varten olevan tunnistus systeemi (Heikki)
             int index;
             for (index = 0; index < receivedMessageBufferIndex; index++)
             {
@@ -764,7 +754,6 @@ void uartTaskFxn(UArg arg0, UArg arg1)
                 // q_acl_x = sensorData[ACL_X][index];
                 // q_acl_y = sensorData[ACL_Y][index];
                 // q_acl_z = sensorData[ACL_Z][index];
-
 
                 // KOMENTOJEN LUKU:
                 // Komentojen lukuehdot (Heikki)
@@ -891,10 +880,13 @@ void uartTaskFxn(UArg arg0, UArg arg1)
                 // q_acl_z = sensorData[ACL_Z][index];
 
                 // MERKKIEN LUKU:
+
                 // Merkkien lukuehdot (Heikki)
+                // gyroskoopin x-akselin yläraja
                 if (fabs(q_gyro_x) > 150 && fabs(q_gyro_x) > fabs(q_gyro_y) && fabs(q_gyro_x) > fabs(q_gyro_z))
                 {
-                    // gyroskoopin x-akselin yläraja
+
+                    // Lähetettävien merkkien bufferointi (Arttu)
                     if (writtenIndex < BUFFER_SIZE)
                     {
                         writtenMessageBuffer[writtenIndex] = 1; // "." = 1
@@ -916,10 +908,12 @@ void uartTaskFxn(UArg arg0, UArg arg1)
                     initializeQueue(&sensorQueue);
                     break;
                 }
+
+                // gyroskoopin y-akselin yläraja
                 if (fabs(q_gyro_y) > 150 && fabs(q_gyro_y) > fabs(q_gyro_x) && fabs(q_gyro_y) > fabs(q_gyro_z))
                 {
-                    // gyroskoopin y-akselin yläraja
 
+                    // Lähetettävien merkkien bufferointi (Arttu)
                     if (writtenIndex < BUFFER_SIZE)
                     {
                         writtenMessageBuffer[writtenIndex] = 2; // "-" = 2
@@ -941,9 +935,12 @@ void uartTaskFxn(UArg arg0, UArg arg1)
                     initializeQueue(&sensorQueue);
                     break;
                 }
+
+                // gyroskoopin z-akselin yläraja
                 if (fabs(q_gyro_z) > 150 && fabs(q_gyro_z) > fabs(q_gyro_y) && fabs(q_gyro_z) > fabs(q_gyro_x))
                 {
-                    // gyroskoopin z-akselin yläraja
+
+                    // Lähetettävien merkkien bufferointi (Arttu)
                     if (writtenIndex < BUFFER_SIZE)
                     {
                         writtenMessageBuffer[writtenIndex] = 0; // " " = 0
@@ -974,7 +971,7 @@ void uartTaskFxn(UArg arg0, UArg arg1)
             }
         }
 
-        if (programState == SEND_MESSAGE)
+        if (programState == SEND_MESSAGE) // (Arttu)
         {
 
             // Jos viestibuffer täynnä, poista viimeinen keskeneräinen kirjain!
@@ -1019,7 +1016,7 @@ void uartTaskFxn(UArg arg0, UArg arg1)
             programState = MESSAGE_SENT;
         }
 
-        if (programState == MESSAGE_SENT)
+        if (programState == MESSAGE_SENT) // (Arttu)
         {
 
             // Ajasta 2s
